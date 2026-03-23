@@ -1,0 +1,39 @@
+# --- Flutter & Dart ---
+.dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+.packages
+.pub-cache/
+.pub/
+/build/
+lib/generated_plugin_registrant.dart
+
+# --- Android & iOS Native ---
+**/android/app/src/main/java/io/flutter/plugins/GeneratedPluginRegistrant.java
+**/ios/Flutter/.last_build_id
+**/ios/Pods/
+**/ios/.symlinks/
+**/ios/Flutter/Flutter.podspec
+
+# --- IDE & OS ---
+.idea/
+.vscode/
+*.iml
+.DS_Store
+
+# --- Python & Environment (Sesuai milik Anda) ---
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.env
+.venv/
+venv/
+env/
+
+# --- ErgoVoice Media & Output ---
+output/
+sample_audio/
+*.mp3
+*.wav
+*.m4a
