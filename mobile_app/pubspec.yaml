@@ -11,29 +11,44 @@ dependencies:
   flutter:
     sdk: flutter
   
+  # Ikon eksklusif bergaya Apple
   cupertino_icons: ^1.0.8
   
+  # Paket Database (Sudah kita instal sebelumnya)
   isar: ^3.1.0+1
   isar_flutter_libs: ^3.1.0+1
-  path_provider: ^2.1.2
+  path_provider: ^2.1.5
+  provider: ^6.1.5+1
+  google_generative_ai: ^0.4.7
+  flutter_dotenv: ^6.0.0
+  flutter_markdown: ^0.7.7+1
+  share_plus: ^12.0.1
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
   flutter_lints: ^3.0.0
   
-  build_runner: ^2.4.8
+  # Mesin pembuat kode otomatis (Sudah kita instal sebelumnya)
+  build_runner: ^2.4.13
   isar_generator: ^3.1.0+1
 
 flutter:
   uses-material-design: true
+  assets:
+    - .env
+    - assets/audio/
 
+
+  # Pendaftaran Font Kustom
   fonts:
+    # 1. Font Merek (Classic Luxury)
     - family: PlayfairDisplay
       fonts:
         - asset: assets/fonts/PlayfairDisplay-Bold.ttf
           weight: 700
           
+    # 2. Font UI Apple (Modern & Bersih)
     - family: SFPro
       fonts:
         - asset: assets/fonts/SF-Pro-Text-Regular.ttf

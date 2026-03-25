@@ -1,10 +1,13 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
-import '../widgets/template_bottom_sheet.dart'; 
+import 'package:provider/provider.dart';
+import '../widgets/template_bottom_sheet.dart';
+import '../providers/recording_provider.dart';
+import '../screens/workspace_screen.dart'; // WAJIB untuk navigasi klik
 
 class DashboardScreen extends StatelessWidget {
-  const DashboardScreen({super.key}); // <-- INI ADALAH KELAS YANG DICARI MAIN.DART
+  const DashboardScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -85,45 +88,82 @@ class DashboardScreen extends StatelessWidget {
                   ),
                 ),
               ),
+              
+              // AREA DAFTAR RAPAT
               Container(
                 decoration: BoxDecoration(
                   color: Colors.white,
                   borderRadius: BorderRadius.circular(12),
                 ),
-                child: Column(
-                  children: [
-                    _buildListItem(
-                      title: 'Q1 Marketing Strategy Alignment',
-                      date: 'Oct 24 • 14:30',
-                      duration: '00:45:12',
-                      tagText: 'Business',
-                      tagIcon: CupertinoIcons.briefcase_fill,
-                      tagColor: Colors.green.shade600, 
-                    ),
-                    _buildDivider(),
-                    _buildListItem(
-                      title: 'Stanford CS224N - Lecture 1',
-                      date: 'Oct 23 • 09:00',
-                      duration: '01:15:30',
-                      tagText: 'Lecture',
-                      tagIcon: CupertinoIcons.book_fill,
-                      tagColor: Colors.purple.shade600,
-                    ),
-                    _buildDivider(),
-                    _buildListItem(
-                      title: 'App Architecture Brainstorm',
-                      date: 'Oct 22 • 21:15',
-                      duration: '00:08:45',
-                      tagText: 'Idea',
-                      tagIcon: CupertinoIcons.lightbulb_fill,
-                      tagColor: Colors.orange.shade600,
-                    ),
-                  ],
+                child: Consumer<RecordingProvider>(
+                  builder: (context, provider, child) {
+                    if (provider.recordings.isEmpty) {
+                      return const Padding(
+                        padding: EdgeInsets.all(32.0),
+                        child: Center(
+                          child: Text(
+                            "Belum ada rekaman rapat.\nTekan Sync Pendant untuk memulai.",
+                            textAlign: TextAlign.center,
+                            style: TextStyle(fontFamily: 'SFPro', color: Color(0xFF8E8E93)),
+                          ),
+                        ),
+                      );
+                    }
+
+                    return Column(
+                      // Membalik urutan agar yang terbaru muncul paling atas
+                      children: provider.recordings.reversed.map((record) {
+                        IconData icon = CupertinoIcons.doc_text_fill;
+                        Color color = Colors.blue.shade600;
+                        String type = record.templateType ?? 'General';
+
+                        if (type == 'Business') { icon = CupertinoIcons.briefcase_fill; color = Colors.green.shade600; }
+                        else if (type == 'Lecture') { icon = CupertinoIcons.book_fill; color = Colors.purple.shade600; }
+                        else if (type == 'Idea') { icon = CupertinoIcons.lightbulb_fill; color = Colors.orange.shade600; }
+
+                        return Column(
+                          children: [
+                            // DIBUNGKUS DISMISSIBLE UNTUK SWIPE-TO-DELETE IOS
+                            Dismissible(
+                              key: Key(record.id.toString()),
+                              direction: DismissDirection.endToStart,
+                              // REVISI: Mengikuti lengkungan kartu (12pt) dan warna Destructive Red Apple
+                              background: ClipRRect(
+                                borderRadius: BorderRadius.circular(12),
+                                child: Container(
+                                  alignment: Alignment.centerRight,
+                                  padding: const EdgeInsets.only(right: 20.0),
+                                  color: CupertinoColors.destructiveRed,
+                                  child: const Icon(CupertinoIcons.trash_fill, color: Colors.white),
+                                ),
+                              ),
+                              onDismissed: (direction) {
+                                provider.deleteRecording(record.id);
+                              },
+                              child: _buildListItem(
+                                context: context, 
+                                record: record,   
+                                title: record.title ?? "Tanpa Judul",
+                                date: record.date != null ? "${record.date!.day}/${record.date!.month}/${record.date!.year}" : "Hari ini",
+                                duration: record.duration ?? "00:00",
+                                tagText: type,
+                                tagIcon: icon,
+                                tagColor: color,
+                              ),
+                            ),
+                            if (record != provider.recordings.first) _buildDivider(),
+                          ],
+                        );
+                      }).toList(),
+                    );
+                  },
                 ),
               ),
               const SizedBox(height: 120), 
             ],
           ),
+          
+          // TOMBOL SYNC PENDANT (LIQUID GLASS)
           Positioned(
             bottom: 32,
             left: 0,
@@ -188,7 +228,10 @@ class DashboardScreen extends StatelessWidget {
     );
   }
 
+  // FUNGSI LIST ITEM YANG SUDAH DILENGKAPI NAVIGASI KLIK
   Widget _buildListItem({
+    required BuildContext context,
+    required dynamic record,
     required String title,
     required String date,
     required String duration,
@@ -197,7 +240,15 @@ class DashboardScreen extends StatelessWidget {
     required Color tagColor,
   }) {
     return InkWell(
-      onTap: () {},
+      onTap: () {
+        // Navigasi masuk kembali ke WorkspaceScreen
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => WorkspaceScreen(recording: record),
+          ),
+        );
+      },
       child: Padding(
         padding: const EdgeInsets.all(16.0),
         child: Row(

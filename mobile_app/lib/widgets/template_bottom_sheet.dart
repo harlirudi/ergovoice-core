@@ -1,12 +1,15 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/cupertino.dart'; // Wajib untuk ikon & spinner Apple
+import 'package:flutter/cupertino.dart'; 
+import 'package:provider/provider.dart'; 
 import '../screens/workspace_screen.dart'; 
+import '../providers/recording_provider.dart'; 
 
 class TemplateBottomSheet extends StatelessWidget {
   const TemplateBottomSheet({super.key});
 
-  void _showProcessingDialog(BuildContext context) {
+  void _showProcessingDialog(BuildContext context, String selectedTemplate) async {
     final navigator = Navigator.of(context);
+    final provider = context.read<RecordingProvider>(); 
 
     // 1. Tutup Bottom Sheet
     navigator.pop();
@@ -15,14 +18,14 @@ class TemplateBottomSheet extends StatelessWidget {
     showDialog(
       context: context,
       barrierDismissible: false, 
-      barrierColor: Colors.black.withValues(alpha: 0.2), // Latar belakang redup elegan
+      barrierColor: Colors.black.withValues(alpha: 0.2), 
       builder: (context) {
         return Center(
           child: Container(
             padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 24),
             decoration: BoxDecoration(
               color: Colors.white,
-              borderRadius: BorderRadius.circular(16), // Sudut melengkung iOS
+              borderRadius: BorderRadius.circular(16), 
               boxShadow: [
                 BoxShadow(
                   color: Colors.black.withValues(alpha: 0.1),
@@ -34,7 +37,6 @@ class TemplateBottomSheet extends StatelessWidget {
             child: const Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                // SPINNER KHAS APPLE
                 CupertinoActivityIndicator(radius: 14), 
                 SizedBox(height: 20),
                 Text(
@@ -44,7 +46,7 @@ class TemplateBottomSheet extends StatelessWidget {
                     fontSize: 16, 
                     fontWeight: FontWeight.w700,
                     color: Colors.black,
-                    decoration: TextDecoration.none, // Wajib di dialog agar tidak ada garis bawah kuning
+                    decoration: TextDecoration.none, 
                   ),
                 ),
                 SizedBox(height: 6),
@@ -64,15 +66,20 @@ class TemplateBottomSheet extends StatelessWidget {
       },
     );
 
-    // 3. Simulasi jeda AI (3 detik)
-    Future.delayed(const Duration(seconds: 3), () {
-      navigator.pop(); // Tutup dialog loading
-      
-      // Buka Workspace Screen (Screen 3)
-      navigator.push(
-        MaterialPageRoute(builder: (context) => const WorkspaceScreen()),
-      );
-    });
+    // 3. MENGHUBUNGI OTAK AI ASLI
+    await provider.syncWithPendant(selectedTemplate);
+
+    // 4. MENGAMBIL DATA HASIL AI YANG BARU SAJA DISIMPAN KE DATABASE LOKAL
+    final newRecord = provider.recordings.last;
+
+    // 5. Tutup loading dan pindah layar dengan membawa datanya
+    navigator.pop(); 
+    
+    navigator.push(
+      MaterialPageRoute(
+        builder: (context) => WorkspaceScreen(recording: newRecord),
+      ),
+    );
   }
 
   @override
@@ -80,14 +87,13 @@ class TemplateBottomSheet extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.only(top: 12, left: 24, right: 24, bottom: 32),
       decoration: const BoxDecoration(
-        color: Color(0xFFF2F2F7), // Latar Abu-abu sistem Apple
+        color: Color(0xFFF2F2F7),
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Drag Handle (Pil penarik khas iOS)
           Center(
             child: Container(
               width: 40,
@@ -99,7 +105,6 @@ class TemplateBottomSheet extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 24),
-          
           const Text(
             'New Audio Detected.\nWhat is the context?',
             style: TextStyle(
@@ -113,7 +118,6 @@ class TemplateBottomSheet extends StatelessWidget {
           ),
           const SizedBox(height: 24),
           
-          // INSET GROUPED LIST: Satu blok putih besar menyatukan 3 opsi
           Container(
             decoration: BoxDecoration(
               color: Colors.white,
@@ -125,8 +129,9 @@ class TemplateBottomSheet extends StatelessWidget {
                   context: context,
                   icon: CupertinoIcons.briefcase_fill,
                   title: 'Business Meeting',
-                  subtitle: 'Outputs: Exec Summary & To-Do List',
+                  subtitle: 'Outputs: Insights, Outcomes & Action Items',
                   color: Colors.green.shade600,
+                  templateName: 'Business', 
                 ),
                 _buildDivider(),
                 _buildTemplateOption(
@@ -135,6 +140,7 @@ class TemplateBottomSheet extends StatelessWidget {
                   title: 'Lecture/Seminar',
                   subtitle: 'Outputs: Key Learnings & Mind-map',
                   color: Colors.purple.shade600,
+                  templateName: 'Lecture', 
                 ),
                 _buildDivider(),
                 _buildTemplateOption(
@@ -143,21 +149,20 @@ class TemplateBottomSheet extends StatelessWidget {
                   title: 'Personal Voice Note',
                   subtitle: 'Outputs: Journal/Brainstorm style',
                   color: Colors.orange.shade600,
+                  templateName: 'Idea', 
                 ),
               ],
             ),
           ),
-          // Ruang kosong ekstra di bawah (Safe Area)
           const SizedBox(height: 20),
         ],
       ),
     );
   }
 
-  // Widget Pemisah (Hairline Divider)
   Widget _buildDivider() {
     return const Padding(
-      padding: EdgeInsets.only(left: 56.0), // Garis dimulai setelah ikon
+      padding: EdgeInsets.only(left: 56.0), 
       child: Divider(
         height: 1,
         thickness: 0.5,
@@ -166,22 +171,21 @@ class TemplateBottomSheet extends StatelessWidget {
     );
   }
 
-  // Desain Opsi Template
   Widget _buildTemplateOption({
     required BuildContext context,
     required IconData icon,
     required String title,
     required String subtitle,
     required Color color,
+    required String templateName, 
   }) {
     return InkWell(
-      onTap: () => _showProcessingDialog(context),
+      onTap: () => _showProcessingDialog(context, templateName),
       borderRadius: BorderRadius.circular(16),
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
         child: Row(
           children: [
-            // Ikon dikurung dalam kotak berukuran tetap
             Container(
               width: 40,
               height: 40,

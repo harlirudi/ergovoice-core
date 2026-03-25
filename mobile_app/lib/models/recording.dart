@@ -1,27 +1,23 @@
 import 'package:isar/isar.dart';
 
-// Baris ini krusial! Ini memberi tahu Isar untuk 
-// membuatkan kode rahasianya di file terpisah.
-part 'recording.g.dart'; 
+part 'recording.g.dart';
 
 @collection
 class Recording {
-  // KTP Data: ID unik yang dibuat otomatis
-  Id id = Isar.autoIncrement; 
-
-  // Metadata Rapat
-  String? title;
-  DateTime? createdAt;
-  int? durationSeconds;
-  
-  // Tag / Kategori (Misal: meeting, lecture, idea)
+  Id id = Isar.autoIncrement;
+  String? title; // Nanti akan diisi Judul Dinamis dari Gemini
+  DateTime? date;
+  String? duration;
   String? templateType;
-  
-  // ALAMAT AUDIO (Kita HANYA menyimpan alamat letak file mp3-nya, 
-  // bukan filenya, agar database tidak lemot)
-  String? audioFilePath;
-  
-  // Hasil Otak Gemini
-  String? rawTranscript;
-  String? aiSummary;
+  String? summary; // Markdown summary bersih TANPA Participants
+  String? transcript;
+  bool isSynced = false;
+  List<String>? participantNames; // KOTAK BARU UNTUK NAMA PARTISIPAN (Editable)
+  List<ActionItem>? actionItems; 
+}
+
+@embedded
+class ActionItem {
+  String? text;
+  bool isDone = false;
 }

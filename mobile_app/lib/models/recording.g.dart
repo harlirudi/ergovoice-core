@@ -17,39 +17,50 @@ const RecordingSchema = CollectionSchema(
   name: r'Recording',
   id: 1554101270335364432,
   properties: {
-    r'aiSummary': PropertySchema(
+    r'actionItems': PropertySchema(
       id: 0,
-      name: r'aiSummary',
-      type: IsarType.string,
+      name: r'actionItems',
+      type: IsarType.objectList,
+      target: r'ActionItem',
     ),
-    r'audioFilePath': PropertySchema(
+    r'date': PropertySchema(
       id: 1,
-      name: r'audioFilePath',
-      type: IsarType.string,
-    ),
-    r'createdAt': PropertySchema(
-      id: 2,
-      name: r'createdAt',
+      name: r'date',
       type: IsarType.dateTime,
     ),
-    r'durationSeconds': PropertySchema(
-      id: 3,
-      name: r'durationSeconds',
-      type: IsarType.long,
+    r'duration': PropertySchema(
+      id: 2,
+      name: r'duration',
+      type: IsarType.string,
     ),
-    r'rawTranscript': PropertySchema(
+    r'isSynced': PropertySchema(
+      id: 3,
+      name: r'isSynced',
+      type: IsarType.bool,
+    ),
+    r'participantNames': PropertySchema(
       id: 4,
-      name: r'rawTranscript',
+      name: r'participantNames',
+      type: IsarType.stringList,
+    ),
+    r'summary': PropertySchema(
+      id: 5,
+      name: r'summary',
       type: IsarType.string,
     ),
     r'templateType': PropertySchema(
-      id: 5,
+      id: 6,
       name: r'templateType',
       type: IsarType.string,
     ),
     r'title': PropertySchema(
-      id: 6,
+      id: 7,
       name: r'title',
+      type: IsarType.string,
+    ),
+    r'transcript': PropertySchema(
+      id: 8,
+      name: r'transcript',
       type: IsarType.string,
     )
   },
@@ -60,7 +71,7 @@ const RecordingSchema = CollectionSchema(
   idName: r'id',
   indexes: {},
   links: {},
-  embeddedSchemas: {},
+  embeddedSchemas: {r'ActionItem': ActionItemSchema},
   getId: _recordingGetId,
   getLinks: _recordingGetLinks,
   attach: _recordingAttach,
@@ -74,19 +85,39 @@ int _recordingEstimateSize(
 ) {
   var bytesCount = offsets.last;
   {
-    final value = object.aiSummary;
+    final list = object.actionItems;
+    if (list != null) {
+      bytesCount += 3 + list.length * 3;
+      {
+        final offsets = allOffsets[ActionItem]!;
+        for (var i = 0; i < list.length; i++) {
+          final value = list[i];
+          bytesCount +=
+              ActionItemSchema.estimateSize(value, offsets, allOffsets);
+        }
+      }
+    }
+  }
+  {
+    final value = object.duration;
     if (value != null) {
       bytesCount += 3 + value.length * 3;
     }
   }
   {
-    final value = object.audioFilePath;
-    if (value != null) {
-      bytesCount += 3 + value.length * 3;
+    final list = object.participantNames;
+    if (list != null) {
+      bytesCount += 3 + list.length * 3;
+      {
+        for (var i = 0; i < list.length; i++) {
+          final value = list[i];
+          bytesCount += value.length * 3;
+        }
+      }
     }
   }
   {
-    final value = object.rawTranscript;
+    final value = object.summary;
     if (value != null) {
       bytesCount += 3 + value.length * 3;
     }
@@ -103,6 +134,12 @@ int _recordingEstimateSize(
       bytesCount += 3 + value.length * 3;
     }
   }
+  {
+    final value = object.transcript;
+    if (value != null) {
+      bytesCount += 3 + value.length * 3;
+    }
+  }
   return bytesCount;
 }
 
@@ -112,13 +149,20 @@ void _recordingSerialize(
   List<int> offsets,
   Map<Type, List<int>> allOffsets,
 ) {
-  writer.writeString(offsets[0], object.aiSummary);
-  writer.writeString(offsets[1], object.audioFilePath);
-  writer.writeDateTime(offsets[2], object.createdAt);
-  writer.writeLong(offsets[3], object.durationSeconds);
-  writer.writeString(offsets[4], object.rawTranscript);
-  writer.writeString(offsets[5], object.templateType);
-  writer.writeString(offsets[6], object.title);
+  writer.writeObjectList<ActionItem>(
+    offsets[0],
+    allOffsets,
+    ActionItemSchema.serialize,
+    object.actionItems,
+  );
+  writer.writeDateTime(offsets[1], object.date);
+  writer.writeString(offsets[2], object.duration);
+  writer.writeBool(offsets[3], object.isSynced);
+  writer.writeStringList(offsets[4], object.participantNames);
+  writer.writeString(offsets[5], object.summary);
+  writer.writeString(offsets[6], object.templateType);
+  writer.writeString(offsets[7], object.title);
+  writer.writeString(offsets[8], object.transcript);
 }
 
 Recording _recordingDeserialize(
@@ -128,14 +172,21 @@ Recording _recordingDeserialize(
   Map<Type, List<int>> allOffsets,
 ) {
   final object = Recording();
-  object.aiSummary = reader.readStringOrNull(offsets[0]);
-  object.audioFilePath = reader.readStringOrNull(offsets[1]);
-  object.createdAt = reader.readDateTimeOrNull(offsets[2]);
-  object.durationSeconds = reader.readLongOrNull(offsets[3]);
+  object.actionItems = reader.readObjectList<ActionItem>(
+    offsets[0],
+    ActionItemSchema.deserialize,
+    allOffsets,
+    ActionItem(),
+  );
+  object.date = reader.readDateTimeOrNull(offsets[1]);
+  object.duration = reader.readStringOrNull(offsets[2]);
   object.id = id;
-  object.rawTranscript = reader.readStringOrNull(offsets[4]);
-  object.templateType = reader.readStringOrNull(offsets[5]);
-  object.title = reader.readStringOrNull(offsets[6]);
+  object.isSynced = reader.readBool(offsets[3]);
+  object.participantNames = reader.readStringList(offsets[4]);
+  object.summary = reader.readStringOrNull(offsets[5]);
+  object.templateType = reader.readStringOrNull(offsets[6]);
+  object.title = reader.readStringOrNull(offsets[7]);
+  object.transcript = reader.readStringOrNull(offsets[8]);
   return object;
 }
 
@@ -147,18 +198,27 @@ P _recordingDeserializeProp<P>(
 ) {
   switch (propertyId) {
     case 0:
-      return (reader.readStringOrNull(offset)) as P;
+      return (reader.readObjectList<ActionItem>(
+        offset,
+        ActionItemSchema.deserialize,
+        allOffsets,
+        ActionItem(),
+      )) as P;
     case 1:
-      return (reader.readStringOrNull(offset)) as P;
-    case 2:
       return (reader.readDateTimeOrNull(offset)) as P;
-    case 3:
-      return (reader.readLongOrNull(offset)) as P;
-    case 4:
+    case 2:
       return (reader.readStringOrNull(offset)) as P;
+    case 3:
+      return (reader.readBool(offset)) as P;
+    case 4:
+      return (reader.readStringList(offset)) as P;
     case 5:
       return (reader.readStringOrNull(offset)) as P;
     case 6:
+      return (reader.readStringOrNull(offset)) as P;
+    case 7:
+      return (reader.readStringOrNull(offset)) as P;
+    case 8:
       return (reader.readStringOrNull(offset)) as P;
     default:
       throw IsarError('Unknown property with id $propertyId');
@@ -256,364 +316,166 @@ extension RecordingQueryWhere
 
 extension RecordingQueryFilter
     on QueryBuilder<Recording, Recording, QFilterCondition> {
-  QueryBuilder<Recording, Recording, QAfterFilterCondition> aiSummaryIsNull() {
+  QueryBuilder<Recording, Recording, QAfterFilterCondition>
+      actionItemsIsNull() {
     return QueryBuilder.apply(this, (query) {
       return query.addFilterCondition(const FilterCondition.isNull(
-        property: r'aiSummary',
+        property: r'actionItems',
       ));
     });
   }
 
   QueryBuilder<Recording, Recording, QAfterFilterCondition>
-      aiSummaryIsNotNull() {
+      actionItemsIsNotNull() {
     return QueryBuilder.apply(this, (query) {
       return query.addFilterCondition(const FilterCondition.isNotNull(
-        property: r'aiSummary',
-      ));
-    });
-  }
-
-  QueryBuilder<Recording, Recording, QAfterFilterCondition> aiSummaryEqualTo(
-    String? value, {
-    bool caseSensitive = true,
-  }) {
-    return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.equalTo(
-        property: r'aiSummary',
-        value: value,
-        caseSensitive: caseSensitive,
+        property: r'actionItems',
       ));
     });
   }
 
   QueryBuilder<Recording, Recording, QAfterFilterCondition>
-      aiSummaryGreaterThan(
-    String? value, {
-    bool include = false,
-    bool caseSensitive = true,
-  }) {
+      actionItemsLengthEqualTo(int length) {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.greaterThan(
-        include: include,
-        property: r'aiSummary',
-        value: value,
-        caseSensitive: caseSensitive,
-      ));
+      return query.listLength(
+        r'actionItems',
+        length,
+        true,
+        length,
+        true,
+      );
     });
   }
 
-  QueryBuilder<Recording, Recording, QAfterFilterCondition> aiSummaryLessThan(
-    String? value, {
-    bool include = false,
-    bool caseSensitive = true,
-  }) {
+  QueryBuilder<Recording, Recording, QAfterFilterCondition>
+      actionItemsIsEmpty() {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.lessThan(
-        include: include,
-        property: r'aiSummary',
-        value: value,
-        caseSensitive: caseSensitive,
-      ));
+      return query.listLength(
+        r'actionItems',
+        0,
+        true,
+        0,
+        true,
+      );
     });
   }
 
-  QueryBuilder<Recording, Recording, QAfterFilterCondition> aiSummaryBetween(
-    String? lower,
-    String? upper, {
+  QueryBuilder<Recording, Recording, QAfterFilterCondition>
+      actionItemsIsNotEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.listLength(
+        r'actionItems',
+        0,
+        false,
+        999999,
+        true,
+      );
+    });
+  }
+
+  QueryBuilder<Recording, Recording, QAfterFilterCondition>
+      actionItemsLengthLessThan(
+    int length, {
+    bool include = false,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.listLength(
+        r'actionItems',
+        0,
+        true,
+        length,
+        include,
+      );
+    });
+  }
+
+  QueryBuilder<Recording, Recording, QAfterFilterCondition>
+      actionItemsLengthGreaterThan(
+    int length, {
+    bool include = false,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.listLength(
+        r'actionItems',
+        length,
+        include,
+        999999,
+        true,
+      );
+    });
+  }
+
+  QueryBuilder<Recording, Recording, QAfterFilterCondition>
+      actionItemsLengthBetween(
+    int lower,
+    int upper, {
     bool includeLower = true,
     bool includeUpper = true,
-    bool caseSensitive = true,
   }) {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.between(
-        property: r'aiSummary',
-        lower: lower,
-        includeLower: includeLower,
-        upper: upper,
-        includeUpper: includeUpper,
-        caseSensitive: caseSensitive,
-      ));
+      return query.listLength(
+        r'actionItems',
+        lower,
+        includeLower,
+        upper,
+        includeUpper,
+      );
     });
   }
 
-  QueryBuilder<Recording, Recording, QAfterFilterCondition> aiSummaryStartsWith(
-    String value, {
-    bool caseSensitive = true,
-  }) {
-    return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.startsWith(
-        property: r'aiSummary',
-        value: value,
-        caseSensitive: caseSensitive,
-      ));
-    });
-  }
-
-  QueryBuilder<Recording, Recording, QAfterFilterCondition> aiSummaryEndsWith(
-    String value, {
-    bool caseSensitive = true,
-  }) {
-    return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.endsWith(
-        property: r'aiSummary',
-        value: value,
-        caseSensitive: caseSensitive,
-      ));
-    });
-  }
-
-  QueryBuilder<Recording, Recording, QAfterFilterCondition> aiSummaryContains(
-      String value,
-      {bool caseSensitive = true}) {
-    return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.contains(
-        property: r'aiSummary',
-        value: value,
-        caseSensitive: caseSensitive,
-      ));
-    });
-  }
-
-  QueryBuilder<Recording, Recording, QAfterFilterCondition> aiSummaryMatches(
-      String pattern,
-      {bool caseSensitive = true}) {
-    return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.matches(
-        property: r'aiSummary',
-        wildcard: pattern,
-        caseSensitive: caseSensitive,
-      ));
-    });
-  }
-
-  QueryBuilder<Recording, Recording, QAfterFilterCondition> aiSummaryIsEmpty() {
-    return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.equalTo(
-        property: r'aiSummary',
-        value: '',
-      ));
-    });
-  }
-
-  QueryBuilder<Recording, Recording, QAfterFilterCondition>
-      aiSummaryIsNotEmpty() {
-    return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.greaterThan(
-        property: r'aiSummary',
-        value: '',
-      ));
-    });
-  }
-
-  QueryBuilder<Recording, Recording, QAfterFilterCondition>
-      audioFilePathIsNull() {
+  QueryBuilder<Recording, Recording, QAfterFilterCondition> dateIsNull() {
     return QueryBuilder.apply(this, (query) {
       return query.addFilterCondition(const FilterCondition.isNull(
-        property: r'audioFilePath',
+        property: r'date',
       ));
     });
   }
 
-  QueryBuilder<Recording, Recording, QAfterFilterCondition>
-      audioFilePathIsNotNull() {
+  QueryBuilder<Recording, Recording, QAfterFilterCondition> dateIsNotNull() {
     return QueryBuilder.apply(this, (query) {
       return query.addFilterCondition(const FilterCondition.isNotNull(
-        property: r'audioFilePath',
+        property: r'date',
       ));
     });
   }
 
-  QueryBuilder<Recording, Recording, QAfterFilterCondition>
-      audioFilePathEqualTo(
-    String? value, {
-    bool caseSensitive = true,
-  }) {
-    return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.equalTo(
-        property: r'audioFilePath',
-        value: value,
-        caseSensitive: caseSensitive,
-      ));
-    });
-  }
-
-  QueryBuilder<Recording, Recording, QAfterFilterCondition>
-      audioFilePathGreaterThan(
-    String? value, {
-    bool include = false,
-    bool caseSensitive = true,
-  }) {
-    return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.greaterThan(
-        include: include,
-        property: r'audioFilePath',
-        value: value,
-        caseSensitive: caseSensitive,
-      ));
-    });
-  }
-
-  QueryBuilder<Recording, Recording, QAfterFilterCondition>
-      audioFilePathLessThan(
-    String? value, {
-    bool include = false,
-    bool caseSensitive = true,
-  }) {
-    return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.lessThan(
-        include: include,
-        property: r'audioFilePath',
-        value: value,
-        caseSensitive: caseSensitive,
-      ));
-    });
-  }
-
-  QueryBuilder<Recording, Recording, QAfterFilterCondition>
-      audioFilePathBetween(
-    String? lower,
-    String? upper, {
-    bool includeLower = true,
-    bool includeUpper = true,
-    bool caseSensitive = true,
-  }) {
-    return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.between(
-        property: r'audioFilePath',
-        lower: lower,
-        includeLower: includeLower,
-        upper: upper,
-        includeUpper: includeUpper,
-        caseSensitive: caseSensitive,
-      ));
-    });
-  }
-
-  QueryBuilder<Recording, Recording, QAfterFilterCondition>
-      audioFilePathStartsWith(
-    String value, {
-    bool caseSensitive = true,
-  }) {
-    return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.startsWith(
-        property: r'audioFilePath',
-        value: value,
-        caseSensitive: caseSensitive,
-      ));
-    });
-  }
-
-  QueryBuilder<Recording, Recording, QAfterFilterCondition>
-      audioFilePathEndsWith(
-    String value, {
-    bool caseSensitive = true,
-  }) {
-    return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.endsWith(
-        property: r'audioFilePath',
-        value: value,
-        caseSensitive: caseSensitive,
-      ));
-    });
-  }
-
-  QueryBuilder<Recording, Recording, QAfterFilterCondition>
-      audioFilePathContains(String value, {bool caseSensitive = true}) {
-    return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.contains(
-        property: r'audioFilePath',
-        value: value,
-        caseSensitive: caseSensitive,
-      ));
-    });
-  }
-
-  QueryBuilder<Recording, Recording, QAfterFilterCondition>
-      audioFilePathMatches(String pattern, {bool caseSensitive = true}) {
-    return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.matches(
-        property: r'audioFilePath',
-        wildcard: pattern,
-        caseSensitive: caseSensitive,
-      ));
-    });
-  }
-
-  QueryBuilder<Recording, Recording, QAfterFilterCondition>
-      audioFilePathIsEmpty() {
-    return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.equalTo(
-        property: r'audioFilePath',
-        value: '',
-      ));
-    });
-  }
-
-  QueryBuilder<Recording, Recording, QAfterFilterCondition>
-      audioFilePathIsNotEmpty() {
-    return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.greaterThan(
-        property: r'audioFilePath',
-        value: '',
-      ));
-    });
-  }
-
-  QueryBuilder<Recording, Recording, QAfterFilterCondition> createdAtIsNull() {
-    return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(const FilterCondition.isNull(
-        property: r'createdAt',
-      ));
-    });
-  }
-
-  QueryBuilder<Recording, Recording, QAfterFilterCondition>
-      createdAtIsNotNull() {
-    return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(const FilterCondition.isNotNull(
-        property: r'createdAt',
-      ));
-    });
-  }
-
-  QueryBuilder<Recording, Recording, QAfterFilterCondition> createdAtEqualTo(
+  QueryBuilder<Recording, Recording, QAfterFilterCondition> dateEqualTo(
       DateTime? value) {
     return QueryBuilder.apply(this, (query) {
       return query.addFilterCondition(FilterCondition.equalTo(
-        property: r'createdAt',
+        property: r'date',
         value: value,
       ));
     });
   }
 
-  QueryBuilder<Recording, Recording, QAfterFilterCondition>
-      createdAtGreaterThan(
+  QueryBuilder<Recording, Recording, QAfterFilterCondition> dateGreaterThan(
     DateTime? value, {
     bool include = false,
   }) {
     return QueryBuilder.apply(this, (query) {
       return query.addFilterCondition(FilterCondition.greaterThan(
         include: include,
-        property: r'createdAt',
+        property: r'date',
         value: value,
       ));
     });
   }
 
-  QueryBuilder<Recording, Recording, QAfterFilterCondition> createdAtLessThan(
+  QueryBuilder<Recording, Recording, QAfterFilterCondition> dateLessThan(
     DateTime? value, {
     bool include = false,
   }) {
     return QueryBuilder.apply(this, (query) {
       return query.addFilterCondition(FilterCondition.lessThan(
         include: include,
-        property: r'createdAt',
+        property: r'date',
         value: value,
       ));
     });
   }
 
-  QueryBuilder<Recording, Recording, QAfterFilterCondition> createdAtBetween(
+  QueryBuilder<Recording, Recording, QAfterFilterCondition> dateBetween(
     DateTime? lower,
     DateTime? upper, {
     bool includeLower = true,
@@ -621,7 +483,7 @@ extension RecordingQueryFilter
   }) {
     return QueryBuilder.apply(this, (query) {
       return query.addFilterCondition(FilterCondition.between(
-        property: r'createdAt',
+        property: r'date',
         lower: lower,
         includeLower: includeLower,
         upper: upper,
@@ -630,76 +492,150 @@ extension RecordingQueryFilter
     });
   }
 
-  QueryBuilder<Recording, Recording, QAfterFilterCondition>
-      durationSecondsIsNull() {
+  QueryBuilder<Recording, Recording, QAfterFilterCondition> durationIsNull() {
     return QueryBuilder.apply(this, (query) {
       return query.addFilterCondition(const FilterCondition.isNull(
-        property: r'durationSeconds',
+        property: r'duration',
       ));
     });
   }
 
   QueryBuilder<Recording, Recording, QAfterFilterCondition>
-      durationSecondsIsNotNull() {
+      durationIsNotNull() {
     return QueryBuilder.apply(this, (query) {
       return query.addFilterCondition(const FilterCondition.isNotNull(
-        property: r'durationSeconds',
+        property: r'duration',
       ));
     });
   }
 
-  QueryBuilder<Recording, Recording, QAfterFilterCondition>
-      durationSecondsEqualTo(int? value) {
+  QueryBuilder<Recording, Recording, QAfterFilterCondition> durationEqualTo(
+    String? value, {
+    bool caseSensitive = true,
+  }) {
     return QueryBuilder.apply(this, (query) {
       return query.addFilterCondition(FilterCondition.equalTo(
-        property: r'durationSeconds',
+        property: r'duration',
         value: value,
+        caseSensitive: caseSensitive,
       ));
     });
   }
 
-  QueryBuilder<Recording, Recording, QAfterFilterCondition>
-      durationSecondsGreaterThan(
-    int? value, {
+  QueryBuilder<Recording, Recording, QAfterFilterCondition> durationGreaterThan(
+    String? value, {
     bool include = false,
+    bool caseSensitive = true,
   }) {
     return QueryBuilder.apply(this, (query) {
       return query.addFilterCondition(FilterCondition.greaterThan(
         include: include,
-        property: r'durationSeconds',
+        property: r'duration',
         value: value,
+        caseSensitive: caseSensitive,
       ));
     });
   }
 
-  QueryBuilder<Recording, Recording, QAfterFilterCondition>
-      durationSecondsLessThan(
-    int? value, {
+  QueryBuilder<Recording, Recording, QAfterFilterCondition> durationLessThan(
+    String? value, {
     bool include = false,
+    bool caseSensitive = true,
   }) {
     return QueryBuilder.apply(this, (query) {
       return query.addFilterCondition(FilterCondition.lessThan(
         include: include,
-        property: r'durationSeconds',
+        property: r'duration',
         value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<Recording, Recording, QAfterFilterCondition> durationBetween(
+    String? lower,
+    String? upper, {
+    bool includeLower = true,
+    bool includeUpper = true,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.between(
+        property: r'duration',
+        lower: lower,
+        includeLower: includeLower,
+        upper: upper,
+        includeUpper: includeUpper,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<Recording, Recording, QAfterFilterCondition> durationStartsWith(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.startsWith(
+        property: r'duration',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<Recording, Recording, QAfterFilterCondition> durationEndsWith(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.endsWith(
+        property: r'duration',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<Recording, Recording, QAfterFilterCondition> durationContains(
+      String value,
+      {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.contains(
+        property: r'duration',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<Recording, Recording, QAfterFilterCondition> durationMatches(
+      String pattern,
+      {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.matches(
+        property: r'duration',
+        wildcard: pattern,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<Recording, Recording, QAfterFilterCondition> durationIsEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'duration',
+        value: '',
       ));
     });
   }
 
   QueryBuilder<Recording, Recording, QAfterFilterCondition>
-      durationSecondsBetween(
-    int? lower,
-    int? upper, {
-    bool includeLower = true,
-    bool includeUpper = true,
-  }) {
+      durationIsNotEmpty() {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.between(
-        property: r'durationSeconds',
-        lower: lower,
-        includeLower: includeLower,
-        upper: upper,
-        includeUpper: includeUpper,
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        property: r'duration',
+        value: '',
       ));
     });
   }
@@ -757,32 +693,42 @@ extension RecordingQueryFilter
     });
   }
 
+  QueryBuilder<Recording, Recording, QAfterFilterCondition> isSyncedEqualTo(
+      bool value) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'isSynced',
+        value: value,
+      ));
+    });
+  }
+
   QueryBuilder<Recording, Recording, QAfterFilterCondition>
-      rawTranscriptIsNull() {
+      participantNamesIsNull() {
     return QueryBuilder.apply(this, (query) {
       return query.addFilterCondition(const FilterCondition.isNull(
-        property: r'rawTranscript',
+        property: r'participantNames',
       ));
     });
   }
 
   QueryBuilder<Recording, Recording, QAfterFilterCondition>
-      rawTranscriptIsNotNull() {
+      participantNamesIsNotNull() {
     return QueryBuilder.apply(this, (query) {
       return query.addFilterCondition(const FilterCondition.isNotNull(
-        property: r'rawTranscript',
+        property: r'participantNames',
       ));
     });
   }
 
   QueryBuilder<Recording, Recording, QAfterFilterCondition>
-      rawTranscriptEqualTo(
-    String? value, {
+      participantNamesElementEqualTo(
+    String value, {
     bool caseSensitive = true,
   }) {
     return QueryBuilder.apply(this, (query) {
       return query.addFilterCondition(FilterCondition.equalTo(
-        property: r'rawTranscript',
+        property: r'participantNames',
         value: value,
         caseSensitive: caseSensitive,
       ));
@@ -790,15 +736,15 @@ extension RecordingQueryFilter
   }
 
   QueryBuilder<Recording, Recording, QAfterFilterCondition>
-      rawTranscriptGreaterThan(
-    String? value, {
+      participantNamesElementGreaterThan(
+    String value, {
     bool include = false,
     bool caseSensitive = true,
   }) {
     return QueryBuilder.apply(this, (query) {
       return query.addFilterCondition(FilterCondition.greaterThan(
         include: include,
-        property: r'rawTranscript',
+        property: r'participantNames',
         value: value,
         caseSensitive: caseSensitive,
       ));
@@ -806,15 +752,15 @@ extension RecordingQueryFilter
   }
 
   QueryBuilder<Recording, Recording, QAfterFilterCondition>
-      rawTranscriptLessThan(
-    String? value, {
+      participantNamesElementLessThan(
+    String value, {
     bool include = false,
     bool caseSensitive = true,
   }) {
     return QueryBuilder.apply(this, (query) {
       return query.addFilterCondition(FilterCondition.lessThan(
         include: include,
-        property: r'rawTranscript',
+        property: r'participantNames',
         value: value,
         caseSensitive: caseSensitive,
       ));
@@ -822,16 +768,16 @@ extension RecordingQueryFilter
   }
 
   QueryBuilder<Recording, Recording, QAfterFilterCondition>
-      rawTranscriptBetween(
-    String? lower,
-    String? upper, {
+      participantNamesElementBetween(
+    String lower,
+    String upper, {
     bool includeLower = true,
     bool includeUpper = true,
     bool caseSensitive = true,
   }) {
     return QueryBuilder.apply(this, (query) {
       return query.addFilterCondition(FilterCondition.between(
-        property: r'rawTranscript',
+        property: r'participantNames',
         lower: lower,
         includeLower: includeLower,
         upper: upper,
@@ -842,13 +788,13 @@ extension RecordingQueryFilter
   }
 
   QueryBuilder<Recording, Recording, QAfterFilterCondition>
-      rawTranscriptStartsWith(
+      participantNamesElementStartsWith(
     String value, {
     bool caseSensitive = true,
   }) {
     return QueryBuilder.apply(this, (query) {
       return query.addFilterCondition(FilterCondition.startsWith(
-        property: r'rawTranscript',
+        property: r'participantNames',
         value: value,
         caseSensitive: caseSensitive,
       ));
@@ -856,13 +802,13 @@ extension RecordingQueryFilter
   }
 
   QueryBuilder<Recording, Recording, QAfterFilterCondition>
-      rawTranscriptEndsWith(
+      participantNamesElementEndsWith(
     String value, {
     bool caseSensitive = true,
   }) {
     return QueryBuilder.apply(this, (query) {
       return query.addFilterCondition(FilterCondition.endsWith(
-        property: r'rawTranscript',
+        property: r'participantNames',
         value: value,
         caseSensitive: caseSensitive,
       ));
@@ -870,10 +816,11 @@ extension RecordingQueryFilter
   }
 
   QueryBuilder<Recording, Recording, QAfterFilterCondition>
-      rawTranscriptContains(String value, {bool caseSensitive = true}) {
+      participantNamesElementContains(String value,
+          {bool caseSensitive = true}) {
     return QueryBuilder.apply(this, (query) {
       return query.addFilterCondition(FilterCondition.contains(
-        property: r'rawTranscript',
+        property: r'participantNames',
         value: value,
         caseSensitive: caseSensitive,
       ));
@@ -881,10 +828,11 @@ extension RecordingQueryFilter
   }
 
   QueryBuilder<Recording, Recording, QAfterFilterCondition>
-      rawTranscriptMatches(String pattern, {bool caseSensitive = true}) {
+      participantNamesElementMatches(String pattern,
+          {bool caseSensitive = true}) {
     return QueryBuilder.apply(this, (query) {
       return query.addFilterCondition(FilterCondition.matches(
-        property: r'rawTranscript',
+        property: r'participantNames',
         wildcard: pattern,
         caseSensitive: caseSensitive,
       ));
@@ -892,20 +840,256 @@ extension RecordingQueryFilter
   }
 
   QueryBuilder<Recording, Recording, QAfterFilterCondition>
-      rawTranscriptIsEmpty() {
+      participantNamesElementIsEmpty() {
     return QueryBuilder.apply(this, (query) {
       return query.addFilterCondition(FilterCondition.equalTo(
-        property: r'rawTranscript',
+        property: r'participantNames',
         value: '',
       ));
     });
   }
 
   QueryBuilder<Recording, Recording, QAfterFilterCondition>
-      rawTranscriptIsNotEmpty() {
+      participantNamesElementIsNotEmpty() {
     return QueryBuilder.apply(this, (query) {
       return query.addFilterCondition(FilterCondition.greaterThan(
-        property: r'rawTranscript',
+        property: r'participantNames',
+        value: '',
+      ));
+    });
+  }
+
+  QueryBuilder<Recording, Recording, QAfterFilterCondition>
+      participantNamesLengthEqualTo(int length) {
+    return QueryBuilder.apply(this, (query) {
+      return query.listLength(
+        r'participantNames',
+        length,
+        true,
+        length,
+        true,
+      );
+    });
+  }
+
+  QueryBuilder<Recording, Recording, QAfterFilterCondition>
+      participantNamesIsEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.listLength(
+        r'participantNames',
+        0,
+        true,
+        0,
+        true,
+      );
+    });
+  }
+
+  QueryBuilder<Recording, Recording, QAfterFilterCondition>
+      participantNamesIsNotEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.listLength(
+        r'participantNames',
+        0,
+        false,
+        999999,
+        true,
+      );
+    });
+  }
+
+  QueryBuilder<Recording, Recording, QAfterFilterCondition>
+      participantNamesLengthLessThan(
+    int length, {
+    bool include = false,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.listLength(
+        r'participantNames',
+        0,
+        true,
+        length,
+        include,
+      );
+    });
+  }
+
+  QueryBuilder<Recording, Recording, QAfterFilterCondition>
+      participantNamesLengthGreaterThan(
+    int length, {
+    bool include = false,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.listLength(
+        r'participantNames',
+        length,
+        include,
+        999999,
+        true,
+      );
+    });
+  }
+
+  QueryBuilder<Recording, Recording, QAfterFilterCondition>
+      participantNamesLengthBetween(
+    int lower,
+    int upper, {
+    bool includeLower = true,
+    bool includeUpper = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.listLength(
+        r'participantNames',
+        lower,
+        includeLower,
+        upper,
+        includeUpper,
+      );
+    });
+  }
+
+  QueryBuilder<Recording, Recording, QAfterFilterCondition> summaryIsNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(const FilterCondition.isNull(
+        property: r'summary',
+      ));
+    });
+  }
+
+  QueryBuilder<Recording, Recording, QAfterFilterCondition> summaryIsNotNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(const FilterCondition.isNotNull(
+        property: r'summary',
+      ));
+    });
+  }
+
+  QueryBuilder<Recording, Recording, QAfterFilterCondition> summaryEqualTo(
+    String? value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'summary',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<Recording, Recording, QAfterFilterCondition> summaryGreaterThan(
+    String? value, {
+    bool include = false,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        include: include,
+        property: r'summary',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<Recording, Recording, QAfterFilterCondition> summaryLessThan(
+    String? value, {
+    bool include = false,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.lessThan(
+        include: include,
+        property: r'summary',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<Recording, Recording, QAfterFilterCondition> summaryBetween(
+    String? lower,
+    String? upper, {
+    bool includeLower = true,
+    bool includeUpper = true,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.between(
+        property: r'summary',
+        lower: lower,
+        includeLower: includeLower,
+        upper: upper,
+        includeUpper: includeUpper,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<Recording, Recording, QAfterFilterCondition> summaryStartsWith(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.startsWith(
+        property: r'summary',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<Recording, Recording, QAfterFilterCondition> summaryEndsWith(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.endsWith(
+        property: r'summary',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<Recording, Recording, QAfterFilterCondition> summaryContains(
+      String value,
+      {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.contains(
+        property: r'summary',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<Recording, Recording, QAfterFilterCondition> summaryMatches(
+      String pattern,
+      {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.matches(
+        property: r'summary',
+        wildcard: pattern,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<Recording, Recording, QAfterFilterCondition> summaryIsEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'summary',
+        value: '',
+      ));
+    });
+  }
+
+  QueryBuilder<Recording, Recording, QAfterFilterCondition>
+      summaryIsNotEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        property: r'summary',
         value: '',
       ));
     });
@@ -1209,72 +1393,218 @@ extension RecordingQueryFilter
       ));
     });
   }
+
+  QueryBuilder<Recording, Recording, QAfterFilterCondition> transcriptIsNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(const FilterCondition.isNull(
+        property: r'transcript',
+      ));
+    });
+  }
+
+  QueryBuilder<Recording, Recording, QAfterFilterCondition>
+      transcriptIsNotNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(const FilterCondition.isNotNull(
+        property: r'transcript',
+      ));
+    });
+  }
+
+  QueryBuilder<Recording, Recording, QAfterFilterCondition> transcriptEqualTo(
+    String? value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'transcript',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<Recording, Recording, QAfterFilterCondition>
+      transcriptGreaterThan(
+    String? value, {
+    bool include = false,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        include: include,
+        property: r'transcript',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<Recording, Recording, QAfterFilterCondition> transcriptLessThan(
+    String? value, {
+    bool include = false,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.lessThan(
+        include: include,
+        property: r'transcript',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<Recording, Recording, QAfterFilterCondition> transcriptBetween(
+    String? lower,
+    String? upper, {
+    bool includeLower = true,
+    bool includeUpper = true,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.between(
+        property: r'transcript',
+        lower: lower,
+        includeLower: includeLower,
+        upper: upper,
+        includeUpper: includeUpper,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<Recording, Recording, QAfterFilterCondition>
+      transcriptStartsWith(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.startsWith(
+        property: r'transcript',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<Recording, Recording, QAfterFilterCondition> transcriptEndsWith(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.endsWith(
+        property: r'transcript',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<Recording, Recording, QAfterFilterCondition> transcriptContains(
+      String value,
+      {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.contains(
+        property: r'transcript',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<Recording, Recording, QAfterFilterCondition> transcriptMatches(
+      String pattern,
+      {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.matches(
+        property: r'transcript',
+        wildcard: pattern,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<Recording, Recording, QAfterFilterCondition>
+      transcriptIsEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'transcript',
+        value: '',
+      ));
+    });
+  }
+
+  QueryBuilder<Recording, Recording, QAfterFilterCondition>
+      transcriptIsNotEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        property: r'transcript',
+        value: '',
+      ));
+    });
+  }
 }
 
 extension RecordingQueryObject
-    on QueryBuilder<Recording, Recording, QFilterCondition> {}
+    on QueryBuilder<Recording, Recording, QFilterCondition> {
+  QueryBuilder<Recording, Recording, QAfterFilterCondition> actionItemsElement(
+      FilterQuery<ActionItem> q) {
+    return QueryBuilder.apply(this, (query) {
+      return query.object(q, r'actionItems');
+    });
+  }
+}
 
 extension RecordingQueryLinks
     on QueryBuilder<Recording, Recording, QFilterCondition> {}
 
 extension RecordingQuerySortBy on QueryBuilder<Recording, Recording, QSortBy> {
-  QueryBuilder<Recording, Recording, QAfterSortBy> sortByAiSummary() {
+  QueryBuilder<Recording, Recording, QAfterSortBy> sortByDate() {
     return QueryBuilder.apply(this, (query) {
-      return query.addSortBy(r'aiSummary', Sort.asc);
+      return query.addSortBy(r'date', Sort.asc);
     });
   }
 
-  QueryBuilder<Recording, Recording, QAfterSortBy> sortByAiSummaryDesc() {
+  QueryBuilder<Recording, Recording, QAfterSortBy> sortByDateDesc() {
     return QueryBuilder.apply(this, (query) {
-      return query.addSortBy(r'aiSummary', Sort.desc);
+      return query.addSortBy(r'date', Sort.desc);
     });
   }
 
-  QueryBuilder<Recording, Recording, QAfterSortBy> sortByAudioFilePath() {
+  QueryBuilder<Recording, Recording, QAfterSortBy> sortByDuration() {
     return QueryBuilder.apply(this, (query) {
-      return query.addSortBy(r'audioFilePath', Sort.asc);
+      return query.addSortBy(r'duration', Sort.asc);
     });
   }
 
-  QueryBuilder<Recording, Recording, QAfterSortBy> sortByAudioFilePathDesc() {
+  QueryBuilder<Recording, Recording, QAfterSortBy> sortByDurationDesc() {
     return QueryBuilder.apply(this, (query) {
-      return query.addSortBy(r'audioFilePath', Sort.desc);
+      return query.addSortBy(r'duration', Sort.desc);
     });
   }
 
-  QueryBuilder<Recording, Recording, QAfterSortBy> sortByCreatedAt() {
+  QueryBuilder<Recording, Recording, QAfterSortBy> sortByIsSynced() {
     return QueryBuilder.apply(this, (query) {
-      return query.addSortBy(r'createdAt', Sort.asc);
+      return query.addSortBy(r'isSynced', Sort.asc);
     });
   }
 
-  QueryBuilder<Recording, Recording, QAfterSortBy> sortByCreatedAtDesc() {
+  QueryBuilder<Recording, Recording, QAfterSortBy> sortByIsSyncedDesc() {
     return QueryBuilder.apply(this, (query) {
-      return query.addSortBy(r'createdAt', Sort.desc);
+      return query.addSortBy(r'isSynced', Sort.desc);
     });
   }
 
-  QueryBuilder<Recording, Recording, QAfterSortBy> sortByDurationSeconds() {
+  QueryBuilder<Recording, Recording, QAfterSortBy> sortBySummary() {
     return QueryBuilder.apply(this, (query) {
-      return query.addSortBy(r'durationSeconds', Sort.asc);
+      return query.addSortBy(r'summary', Sort.asc);
     });
   }
 
-  QueryBuilder<Recording, Recording, QAfterSortBy> sortByDurationSecondsDesc() {
+  QueryBuilder<Recording, Recording, QAfterSortBy> sortBySummaryDesc() {
     return QueryBuilder.apply(this, (query) {
-      return query.addSortBy(r'durationSeconds', Sort.desc);
-    });
-  }
-
-  QueryBuilder<Recording, Recording, QAfterSortBy> sortByRawTranscript() {
-    return QueryBuilder.apply(this, (query) {
-      return query.addSortBy(r'rawTranscript', Sort.asc);
-    });
-  }
-
-  QueryBuilder<Recording, Recording, QAfterSortBy> sortByRawTranscriptDesc() {
-    return QueryBuilder.apply(this, (query) {
-      return query.addSortBy(r'rawTranscript', Sort.desc);
+      return query.addSortBy(r'summary', Sort.desc);
     });
   }
 
@@ -1301,55 +1631,43 @@ extension RecordingQuerySortBy on QueryBuilder<Recording, Recording, QSortBy> {
       return query.addSortBy(r'title', Sort.desc);
     });
   }
+
+  QueryBuilder<Recording, Recording, QAfterSortBy> sortByTranscript() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'transcript', Sort.asc);
+    });
+  }
+
+  QueryBuilder<Recording, Recording, QAfterSortBy> sortByTranscriptDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'transcript', Sort.desc);
+    });
+  }
 }
 
 extension RecordingQuerySortThenBy
     on QueryBuilder<Recording, Recording, QSortThenBy> {
-  QueryBuilder<Recording, Recording, QAfterSortBy> thenByAiSummary() {
+  QueryBuilder<Recording, Recording, QAfterSortBy> thenByDate() {
     return QueryBuilder.apply(this, (query) {
-      return query.addSortBy(r'aiSummary', Sort.asc);
+      return query.addSortBy(r'date', Sort.asc);
     });
   }
 
-  QueryBuilder<Recording, Recording, QAfterSortBy> thenByAiSummaryDesc() {
+  QueryBuilder<Recording, Recording, QAfterSortBy> thenByDateDesc() {
     return QueryBuilder.apply(this, (query) {
-      return query.addSortBy(r'aiSummary', Sort.desc);
+      return query.addSortBy(r'date', Sort.desc);
     });
   }
 
-  QueryBuilder<Recording, Recording, QAfterSortBy> thenByAudioFilePath() {
+  QueryBuilder<Recording, Recording, QAfterSortBy> thenByDuration() {
     return QueryBuilder.apply(this, (query) {
-      return query.addSortBy(r'audioFilePath', Sort.asc);
+      return query.addSortBy(r'duration', Sort.asc);
     });
   }
 
-  QueryBuilder<Recording, Recording, QAfterSortBy> thenByAudioFilePathDesc() {
+  QueryBuilder<Recording, Recording, QAfterSortBy> thenByDurationDesc() {
     return QueryBuilder.apply(this, (query) {
-      return query.addSortBy(r'audioFilePath', Sort.desc);
-    });
-  }
-
-  QueryBuilder<Recording, Recording, QAfterSortBy> thenByCreatedAt() {
-    return QueryBuilder.apply(this, (query) {
-      return query.addSortBy(r'createdAt', Sort.asc);
-    });
-  }
-
-  QueryBuilder<Recording, Recording, QAfterSortBy> thenByCreatedAtDesc() {
-    return QueryBuilder.apply(this, (query) {
-      return query.addSortBy(r'createdAt', Sort.desc);
-    });
-  }
-
-  QueryBuilder<Recording, Recording, QAfterSortBy> thenByDurationSeconds() {
-    return QueryBuilder.apply(this, (query) {
-      return query.addSortBy(r'durationSeconds', Sort.asc);
-    });
-  }
-
-  QueryBuilder<Recording, Recording, QAfterSortBy> thenByDurationSecondsDesc() {
-    return QueryBuilder.apply(this, (query) {
-      return query.addSortBy(r'durationSeconds', Sort.desc);
+      return query.addSortBy(r'duration', Sort.desc);
     });
   }
 
@@ -1365,15 +1683,27 @@ extension RecordingQuerySortThenBy
     });
   }
 
-  QueryBuilder<Recording, Recording, QAfterSortBy> thenByRawTranscript() {
+  QueryBuilder<Recording, Recording, QAfterSortBy> thenByIsSynced() {
     return QueryBuilder.apply(this, (query) {
-      return query.addSortBy(r'rawTranscript', Sort.asc);
+      return query.addSortBy(r'isSynced', Sort.asc);
     });
   }
 
-  QueryBuilder<Recording, Recording, QAfterSortBy> thenByRawTranscriptDesc() {
+  QueryBuilder<Recording, Recording, QAfterSortBy> thenByIsSyncedDesc() {
     return QueryBuilder.apply(this, (query) {
-      return query.addSortBy(r'rawTranscript', Sort.desc);
+      return query.addSortBy(r'isSynced', Sort.desc);
+    });
+  }
+
+  QueryBuilder<Recording, Recording, QAfterSortBy> thenBySummary() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'summary', Sort.asc);
+    });
+  }
+
+  QueryBuilder<Recording, Recording, QAfterSortBy> thenBySummaryDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'summary', Sort.desc);
     });
   }
 
@@ -1400,42 +1730,51 @@ extension RecordingQuerySortThenBy
       return query.addSortBy(r'title', Sort.desc);
     });
   }
+
+  QueryBuilder<Recording, Recording, QAfterSortBy> thenByTranscript() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'transcript', Sort.asc);
+    });
+  }
+
+  QueryBuilder<Recording, Recording, QAfterSortBy> thenByTranscriptDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'transcript', Sort.desc);
+    });
+  }
 }
 
 extension RecordingQueryWhereDistinct
     on QueryBuilder<Recording, Recording, QDistinct> {
-  QueryBuilder<Recording, Recording, QDistinct> distinctByAiSummary(
+  QueryBuilder<Recording, Recording, QDistinct> distinctByDate() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addDistinctBy(r'date');
+    });
+  }
+
+  QueryBuilder<Recording, Recording, QDistinct> distinctByDuration(
       {bool caseSensitive = true}) {
     return QueryBuilder.apply(this, (query) {
-      return query.addDistinctBy(r'aiSummary', caseSensitive: caseSensitive);
+      return query.addDistinctBy(r'duration', caseSensitive: caseSensitive);
     });
   }
 
-  QueryBuilder<Recording, Recording, QDistinct> distinctByAudioFilePath(
+  QueryBuilder<Recording, Recording, QDistinct> distinctByIsSynced() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addDistinctBy(r'isSynced');
+    });
+  }
+
+  QueryBuilder<Recording, Recording, QDistinct> distinctByParticipantNames() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addDistinctBy(r'participantNames');
+    });
+  }
+
+  QueryBuilder<Recording, Recording, QDistinct> distinctBySummary(
       {bool caseSensitive = true}) {
     return QueryBuilder.apply(this, (query) {
-      return query.addDistinctBy(r'audioFilePath',
-          caseSensitive: caseSensitive);
-    });
-  }
-
-  QueryBuilder<Recording, Recording, QDistinct> distinctByCreatedAt() {
-    return QueryBuilder.apply(this, (query) {
-      return query.addDistinctBy(r'createdAt');
-    });
-  }
-
-  QueryBuilder<Recording, Recording, QDistinct> distinctByDurationSeconds() {
-    return QueryBuilder.apply(this, (query) {
-      return query.addDistinctBy(r'durationSeconds');
-    });
-  }
-
-  QueryBuilder<Recording, Recording, QDistinct> distinctByRawTranscript(
-      {bool caseSensitive = true}) {
-    return QueryBuilder.apply(this, (query) {
-      return query.addDistinctBy(r'rawTranscript',
-          caseSensitive: caseSensitive);
+      return query.addDistinctBy(r'summary', caseSensitive: caseSensitive);
     });
   }
 
@@ -1452,6 +1791,13 @@ extension RecordingQueryWhereDistinct
       return query.addDistinctBy(r'title', caseSensitive: caseSensitive);
     });
   }
+
+  QueryBuilder<Recording, Recording, QDistinct> distinctByTranscript(
+      {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addDistinctBy(r'transcript', caseSensitive: caseSensitive);
+    });
+  }
 }
 
 extension RecordingQueryProperty
@@ -1462,33 +1808,41 @@ extension RecordingQueryProperty
     });
   }
 
-  QueryBuilder<Recording, String?, QQueryOperations> aiSummaryProperty() {
+  QueryBuilder<Recording, List<ActionItem>?, QQueryOperations>
+      actionItemsProperty() {
     return QueryBuilder.apply(this, (query) {
-      return query.addPropertyName(r'aiSummary');
+      return query.addPropertyName(r'actionItems');
     });
   }
 
-  QueryBuilder<Recording, String?, QQueryOperations> audioFilePathProperty() {
+  QueryBuilder<Recording, DateTime?, QQueryOperations> dateProperty() {
     return QueryBuilder.apply(this, (query) {
-      return query.addPropertyName(r'audioFilePath');
+      return query.addPropertyName(r'date');
     });
   }
 
-  QueryBuilder<Recording, DateTime?, QQueryOperations> createdAtProperty() {
+  QueryBuilder<Recording, String?, QQueryOperations> durationProperty() {
     return QueryBuilder.apply(this, (query) {
-      return query.addPropertyName(r'createdAt');
+      return query.addPropertyName(r'duration');
     });
   }
 
-  QueryBuilder<Recording, int?, QQueryOperations> durationSecondsProperty() {
+  QueryBuilder<Recording, bool, QQueryOperations> isSyncedProperty() {
     return QueryBuilder.apply(this, (query) {
-      return query.addPropertyName(r'durationSeconds');
+      return query.addPropertyName(r'isSynced');
     });
   }
 
-  QueryBuilder<Recording, String?, QQueryOperations> rawTranscriptProperty() {
+  QueryBuilder<Recording, List<String>?, QQueryOperations>
+      participantNamesProperty() {
     return QueryBuilder.apply(this, (query) {
-      return query.addPropertyName(r'rawTranscript');
+      return query.addPropertyName(r'participantNames');
+    });
+  }
+
+  QueryBuilder<Recording, String?, QQueryOperations> summaryProperty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addPropertyName(r'summary');
     });
   }
 
@@ -1503,4 +1857,253 @@ extension RecordingQueryProperty
       return query.addPropertyName(r'title');
     });
   }
+
+  QueryBuilder<Recording, String?, QQueryOperations> transcriptProperty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addPropertyName(r'transcript');
+    });
+  }
 }
+
+// **************************************************************************
+// IsarEmbeddedGenerator
+// **************************************************************************
+
+// coverage:ignore-file
+// ignore_for_file: duplicate_ignore, non_constant_identifier_names, constant_identifier_names, invalid_use_of_protected_member, unnecessary_cast, prefer_const_constructors, lines_longer_than_80_chars, require_trailing_commas, inference_failure_on_function_invocation, unnecessary_parenthesis, unnecessary_raw_strings, unnecessary_null_checks, join_return_with_assignment, prefer_final_locals, avoid_js_rounded_ints, avoid_positional_boolean_parameters, always_specify_types
+
+const ActionItemSchema = Schema(
+  name: r'ActionItem',
+  id: 1916725859023885483,
+  properties: {
+    r'isDone': PropertySchema(
+      id: 0,
+      name: r'isDone',
+      type: IsarType.bool,
+    ),
+    r'text': PropertySchema(
+      id: 1,
+      name: r'text',
+      type: IsarType.string,
+    )
+  },
+  estimateSize: _actionItemEstimateSize,
+  serialize: _actionItemSerialize,
+  deserialize: _actionItemDeserialize,
+  deserializeProp: _actionItemDeserializeProp,
+);
+
+int _actionItemEstimateSize(
+  ActionItem object,
+  List<int> offsets,
+  Map<Type, List<int>> allOffsets,
+) {
+  var bytesCount = offsets.last;
+  {
+    final value = object.text;
+    if (value != null) {
+      bytesCount += 3 + value.length * 3;
+    }
+  }
+  return bytesCount;
+}
+
+void _actionItemSerialize(
+  ActionItem object,
+  IsarWriter writer,
+  List<int> offsets,
+  Map<Type, List<int>> allOffsets,
+) {
+  writer.writeBool(offsets[0], object.isDone);
+  writer.writeString(offsets[1], object.text);
+}
+
+ActionItem _actionItemDeserialize(
+  Id id,
+  IsarReader reader,
+  List<int> offsets,
+  Map<Type, List<int>> allOffsets,
+) {
+  final object = ActionItem();
+  object.isDone = reader.readBool(offsets[0]);
+  object.text = reader.readStringOrNull(offsets[1]);
+  return object;
+}
+
+P _actionItemDeserializeProp<P>(
+  IsarReader reader,
+  int propertyId,
+  int offset,
+  Map<Type, List<int>> allOffsets,
+) {
+  switch (propertyId) {
+    case 0:
+      return (reader.readBool(offset)) as P;
+    case 1:
+      return (reader.readStringOrNull(offset)) as P;
+    default:
+      throw IsarError('Unknown property with id $propertyId');
+  }
+}
+
+extension ActionItemQueryFilter
+    on QueryBuilder<ActionItem, ActionItem, QFilterCondition> {
+  QueryBuilder<ActionItem, ActionItem, QAfterFilterCondition> isDoneEqualTo(
+      bool value) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'isDone',
+        value: value,
+      ));
+    });
+  }
+
+  QueryBuilder<ActionItem, ActionItem, QAfterFilterCondition> textIsNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(const FilterCondition.isNull(
+        property: r'text',
+      ));
+    });
+  }
+
+  QueryBuilder<ActionItem, ActionItem, QAfterFilterCondition> textIsNotNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(const FilterCondition.isNotNull(
+        property: r'text',
+      ));
+    });
+  }
+
+  QueryBuilder<ActionItem, ActionItem, QAfterFilterCondition> textEqualTo(
+    String? value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'text',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<ActionItem, ActionItem, QAfterFilterCondition> textGreaterThan(
+    String? value, {
+    bool include = false,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        include: include,
+        property: r'text',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<ActionItem, ActionItem, QAfterFilterCondition> textLessThan(
+    String? value, {
+    bool include = false,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.lessThan(
+        include: include,
+        property: r'text',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<ActionItem, ActionItem, QAfterFilterCondition> textBetween(
+    String? lower,
+    String? upper, {
+    bool includeLower = true,
+    bool includeUpper = true,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.between(
+        property: r'text',
+        lower: lower,
+        includeLower: includeLower,
+        upper: upper,
+        includeUpper: includeUpper,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<ActionItem, ActionItem, QAfterFilterCondition> textStartsWith(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.startsWith(
+        property: r'text',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<ActionItem, ActionItem, QAfterFilterCondition> textEndsWith(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.endsWith(
+        property: r'text',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<ActionItem, ActionItem, QAfterFilterCondition> textContains(
+      String value,
+      {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.contains(
+        property: r'text',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<ActionItem, ActionItem, QAfterFilterCondition> textMatches(
+      String pattern,
+      {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.matches(
+        property: r'text',
+        wildcard: pattern,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<ActionItem, ActionItem, QAfterFilterCondition> textIsEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'text',
+        value: '',
+      ));
+    });
+  }
+
+  QueryBuilder<ActionItem, ActionItem, QAfterFilterCondition> textIsNotEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        property: r'text',
+        value: '',
+      ));
+    });
+  }
+}
+
+extension ActionItemQueryObject
+    on QueryBuilder<ActionItem, ActionItem, QFilterCondition> {}
