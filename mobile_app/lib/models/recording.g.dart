@@ -33,33 +33,38 @@ const RecordingSchema = CollectionSchema(
       name: r'duration',
       type: IsarType.string,
     ),
-    r'isSynced': PropertySchema(
+    r'filePath': PropertySchema(
       id: 3,
+      name: r'filePath',
+      type: IsarType.string,
+    ),
+    r'isSynced': PropertySchema(
+      id: 4,
       name: r'isSynced',
       type: IsarType.bool,
     ),
     r'participantNames': PropertySchema(
-      id: 4,
+      id: 5,
       name: r'participantNames',
       type: IsarType.stringList,
     ),
     r'summary': PropertySchema(
-      id: 5,
+      id: 6,
       name: r'summary',
       type: IsarType.string,
     ),
     r'templateType': PropertySchema(
-      id: 6,
+      id: 7,
       name: r'templateType',
       type: IsarType.string,
     ),
     r'title': PropertySchema(
-      id: 7,
+      id: 8,
       name: r'title',
       type: IsarType.string,
     ),
     r'transcript': PropertySchema(
-      id: 8,
+      id: 9,
       name: r'transcript',
       type: IsarType.string,
     )
@@ -100,6 +105,12 @@ int _recordingEstimateSize(
   }
   {
     final value = object.duration;
+    if (value != null) {
+      bytesCount += 3 + value.length * 3;
+    }
+  }
+  {
+    final value = object.filePath;
     if (value != null) {
       bytesCount += 3 + value.length * 3;
     }
@@ -157,12 +168,13 @@ void _recordingSerialize(
   );
   writer.writeDateTime(offsets[1], object.date);
   writer.writeString(offsets[2], object.duration);
-  writer.writeBool(offsets[3], object.isSynced);
-  writer.writeStringList(offsets[4], object.participantNames);
-  writer.writeString(offsets[5], object.summary);
-  writer.writeString(offsets[6], object.templateType);
-  writer.writeString(offsets[7], object.title);
-  writer.writeString(offsets[8], object.transcript);
+  writer.writeString(offsets[3], object.filePath);
+  writer.writeBool(offsets[4], object.isSynced);
+  writer.writeStringList(offsets[5], object.participantNames);
+  writer.writeString(offsets[6], object.summary);
+  writer.writeString(offsets[7], object.templateType);
+  writer.writeString(offsets[8], object.title);
+  writer.writeString(offsets[9], object.transcript);
 }
 
 Recording _recordingDeserialize(
@@ -180,13 +192,14 @@ Recording _recordingDeserialize(
   );
   object.date = reader.readDateTimeOrNull(offsets[1]);
   object.duration = reader.readStringOrNull(offsets[2]);
+  object.filePath = reader.readStringOrNull(offsets[3]);
   object.id = id;
-  object.isSynced = reader.readBool(offsets[3]);
-  object.participantNames = reader.readStringList(offsets[4]);
-  object.summary = reader.readStringOrNull(offsets[5]);
-  object.templateType = reader.readStringOrNull(offsets[6]);
-  object.title = reader.readStringOrNull(offsets[7]);
-  object.transcript = reader.readStringOrNull(offsets[8]);
+  object.isSynced = reader.readBool(offsets[4]);
+  object.participantNames = reader.readStringList(offsets[5]);
+  object.summary = reader.readStringOrNull(offsets[6]);
+  object.templateType = reader.readStringOrNull(offsets[7]);
+  object.title = reader.readStringOrNull(offsets[8]);
+  object.transcript = reader.readStringOrNull(offsets[9]);
   return object;
 }
 
@@ -209,16 +222,18 @@ P _recordingDeserializeProp<P>(
     case 2:
       return (reader.readStringOrNull(offset)) as P;
     case 3:
-      return (reader.readBool(offset)) as P;
-    case 4:
-      return (reader.readStringList(offset)) as P;
-    case 5:
       return (reader.readStringOrNull(offset)) as P;
+    case 4:
+      return (reader.readBool(offset)) as P;
+    case 5:
+      return (reader.readStringList(offset)) as P;
     case 6:
       return (reader.readStringOrNull(offset)) as P;
     case 7:
       return (reader.readStringOrNull(offset)) as P;
     case 8:
+      return (reader.readStringOrNull(offset)) as P;
+    case 9:
       return (reader.readStringOrNull(offset)) as P;
     default:
       throw IsarError('Unknown property with id $propertyId');
@@ -635,6 +650,154 @@ extension RecordingQueryFilter
     return QueryBuilder.apply(this, (query) {
       return query.addFilterCondition(FilterCondition.greaterThan(
         property: r'duration',
+        value: '',
+      ));
+    });
+  }
+
+  QueryBuilder<Recording, Recording, QAfterFilterCondition> filePathIsNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(const FilterCondition.isNull(
+        property: r'filePath',
+      ));
+    });
+  }
+
+  QueryBuilder<Recording, Recording, QAfterFilterCondition>
+      filePathIsNotNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(const FilterCondition.isNotNull(
+        property: r'filePath',
+      ));
+    });
+  }
+
+  QueryBuilder<Recording, Recording, QAfterFilterCondition> filePathEqualTo(
+    String? value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'filePath',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<Recording, Recording, QAfterFilterCondition> filePathGreaterThan(
+    String? value, {
+    bool include = false,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        include: include,
+        property: r'filePath',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<Recording, Recording, QAfterFilterCondition> filePathLessThan(
+    String? value, {
+    bool include = false,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.lessThan(
+        include: include,
+        property: r'filePath',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<Recording, Recording, QAfterFilterCondition> filePathBetween(
+    String? lower,
+    String? upper, {
+    bool includeLower = true,
+    bool includeUpper = true,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.between(
+        property: r'filePath',
+        lower: lower,
+        includeLower: includeLower,
+        upper: upper,
+        includeUpper: includeUpper,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<Recording, Recording, QAfterFilterCondition> filePathStartsWith(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.startsWith(
+        property: r'filePath',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<Recording, Recording, QAfterFilterCondition> filePathEndsWith(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.endsWith(
+        property: r'filePath',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<Recording, Recording, QAfterFilterCondition> filePathContains(
+      String value,
+      {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.contains(
+        property: r'filePath',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<Recording, Recording, QAfterFilterCondition> filePathMatches(
+      String pattern,
+      {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.matches(
+        property: r'filePath',
+        wildcard: pattern,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<Recording, Recording, QAfterFilterCondition> filePathIsEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'filePath',
+        value: '',
+      ));
+    });
+  }
+
+  QueryBuilder<Recording, Recording, QAfterFilterCondition>
+      filePathIsNotEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        property: r'filePath',
         value: '',
       ));
     });
@@ -1584,6 +1747,18 @@ extension RecordingQuerySortBy on QueryBuilder<Recording, Recording, QSortBy> {
     });
   }
 
+  QueryBuilder<Recording, Recording, QAfterSortBy> sortByFilePath() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'filePath', Sort.asc);
+    });
+  }
+
+  QueryBuilder<Recording, Recording, QAfterSortBy> sortByFilePathDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'filePath', Sort.desc);
+    });
+  }
+
   QueryBuilder<Recording, Recording, QAfterSortBy> sortByIsSynced() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'isSynced', Sort.asc);
@@ -1668,6 +1843,18 @@ extension RecordingQuerySortThenBy
   QueryBuilder<Recording, Recording, QAfterSortBy> thenByDurationDesc() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'duration', Sort.desc);
+    });
+  }
+
+  QueryBuilder<Recording, Recording, QAfterSortBy> thenByFilePath() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'filePath', Sort.asc);
+    });
+  }
+
+  QueryBuilder<Recording, Recording, QAfterSortBy> thenByFilePathDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'filePath', Sort.desc);
     });
   }
 
@@ -1759,6 +1946,13 @@ extension RecordingQueryWhereDistinct
     });
   }
 
+  QueryBuilder<Recording, Recording, QDistinct> distinctByFilePath(
+      {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addDistinctBy(r'filePath', caseSensitive: caseSensitive);
+    });
+  }
+
   QueryBuilder<Recording, Recording, QDistinct> distinctByIsSynced() {
     return QueryBuilder.apply(this, (query) {
       return query.addDistinctBy(r'isSynced');
@@ -1824,6 +2018,12 @@ extension RecordingQueryProperty
   QueryBuilder<Recording, String?, QQueryOperations> durationProperty() {
     return QueryBuilder.apply(this, (query) {
       return query.addPropertyName(r'duration');
+    });
+  }
+
+  QueryBuilder<Recording, String?, QQueryOperations> filePathProperty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addPropertyName(r'filePath');
     });
   }
 

@@ -12,6 +12,7 @@ class Recording {
   String? summary; // Markdown summary bersih TANPA Participants
   String? transcript;
   bool isSynced = false;
+  String? filePath;
   List<String>? participantNames; // KOTAK BARU UNTUK NAMA PARTISIPAN (Editable)
   List<ActionItem>? actionItems; 
 }

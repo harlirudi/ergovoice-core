@@ -1,3 +1,5 @@
+import '../services/gemini_service.dart';
+import 'package:audioplayers/audioplayers.dart';
 import 'package:share_plus/share_plus.dart'; 
 import 'dart:ui';
 import 'package:flutter/material.dart';
@@ -18,8 +20,149 @@ class WorkspaceScreen extends StatefulWidget {
 
 class _WorkspaceScreenState extends State<WorkspaceScreen> {
   int _selectedTab = 0;
-  // REVISI 1: Variabel State untuk sembunyikan Mini Player (aesthetic polish ala SKILL.md)
   bool _isShowingActionSheet = false; 
+
+  // --- MULAI: MESIN AUDIO PLAYER ---
+  final AudioPlayer _audioPlayer = AudioPlayer();
+  bool _isPlaying = false;
+  Duration _duration = Duration.zero;
+  Duration _position = Duration.zero;
+  double _playbackRate = 1.0;
+
+  // VARIABEL BARU: Untuk melacak status mengetik
+  bool _isUserTyping = false;
+  
+  
+  @override
+  void initState() {
+    super.initState();
+    _setupAudioPlayer();
+    
+    // --- MULAI: CHAT UX LISTENERBergaya iMessage ala liquid-glass-philosophy.md Interaction ---
+    _chatController.addListener(() {
+      setState(() {
+        _isUserTyping = _chatController.text.isNotEmpty;
+      });
+    });
+    // --- SELESAI: CHAT UX LISTENER ---
+  }
+
+  Future<void> _setupAudioPlayer() async {
+    // 1. Dengarkan status Play/Pause
+    _audioPlayer.onPlayerStateChanged.listen((state) {
+      if (mounted) {
+        setState(() => _isPlaying = state == PlayerState.playing);
+      }
+    });
+    
+    // 2. Dapatkan total durasi audio
+    _audioPlayer.onDurationChanged.listen((newDuration) {
+      if (mounted) {
+        setState(() => _duration = newDuration);
+      }
+    });
+    
+    // 3. Dengarkan pergerakan waktu (Progress Bar)
+    _audioPlayer.onPositionChanged.listen((newPosition) {
+      if (mounted) {
+        setState(() => _position = newPosition);
+      }
+    });
+    
+    // 4. Jika audio selesai, kembalikan ke awal
+    _audioPlayer.onPlayerComplete.listen((event) {
+      if (mounted) {
+        setState(() {
+          _isPlaying = false;
+          _position = Duration.zero;
+        });
+      }
+    });
+
+    // 5. Masukkan "Kaset" Audio (Untuk MVP kita pakai file simulasi)
+    // Pastikan Anda memiliki file testing_rapat.mp3 di folder assets Anda.
+    if (widget.recording.filePath != null && widget.recording.filePath!.isNotEmpty) {
+      await _audioPlayer.setSource(DeviceFileSource(widget.recording.filePath!));
+    } else {
+      await _audioPlayer.setSource(AssetSource('audio/testing_rapat.mp3'));
+    }
+  }
+
+  // FUNGSI BARU: Siklus Kecepatan Audio
+  void _togglePlaybackRate() {
+    setState(() {
+      if (_playbackRate == 1.0) {
+        _playbackRate = 1.5;
+      } else if (_playbackRate == 1.5) {
+        _playbackRate = 2.0;
+      } else if (_playbackRate == 2.0) {
+        _playbackRate = 0.5;
+      } else {
+        _playbackRate = 1.0;
+      }
+    });
+    _audioPlayer.setPlaybackRate(_playbackRate);
+  }
+
+  @override
+  void dispose() {
+    _audioPlayer.dispose(); // WAJIB: Matikan mesin saat keluar layar agar tidak bocor memori
+    super.dispose();
+  }
+
+  // Fungsi pengubah angka milidetik menjadi format Apple "00:00"
+  String _formatDuration(Duration d) {
+    String twoDigits(int n) => n.toString().padLeft(2, '0');
+    String twoDigitMinutes = twoDigits(d.inMinutes.remainder(60));
+    String twoDigitSeconds = twoDigits(d.inSeconds.remainder(60));
+    return "$twoDigitMinutes:$twoDigitSeconds";
+  }
+  // --- SELESAI: MESIN AUDIO PLAYER ---
+
+  // --- MULAI: MEMORI ASK ERGO CHAT ---
+  final TextEditingController _chatController = TextEditingController();
+  final ScrollController _chatScrollController = ScrollController();
+  final List<Map<String, String>> _chatMessages = [];
+  bool _isErgoTyping = false;
+
+  Future<void> _handleSendMessage(String contextData) async {
+    final text = _chatController.text.trim();
+    if (text.isEmpty) return;
+
+    // 1. Masukkan pesan user ke layar
+    setState(() {
+      _chatMessages.add({'role': 'user', 'text': text});
+      _isErgoTyping = true;
+    });
+    _chatController.clear();
+    _scrollToBottom();
+
+    // 2. Kirim ke Gemini
+    final gemini = GeminiService();
+    final response = await gemini.askErgo(text, contextData);
+
+    // 3. Tampilkan balasan Ergo
+    if (mounted) {
+      setState(() {
+        _chatMessages.add({'role': 'ai', 'text': response});
+        _isErgoTyping = false;
+      });
+      _scrollToBottom();
+    }
+  }
+
+  void _scrollToBottom() {
+    Future.delayed(const Duration(milliseconds: 100), () {
+      if (_chatScrollController.hasClients) {
+        _chatScrollController.animateTo(
+          _chatScrollController.position.maxScrollExtent,
+          duration: const Duration(milliseconds: 300),
+          curve: Curves.easeOut,
+        );
+      }
+    });
+  }
+  // --- SELESAI: MEMORI ASK ERGO CHAT ---
 
   // FUNGSI BARU: Dynamic Share - Membedakan apa yang dishare berdasarkan tab yang aktif (Interaction mastery ala design-awards.md)
   void _executeSmartShare(BuildContext context, Recording record) {
@@ -212,10 +355,10 @@ Powered by ErgoVoice.
                                     ),
                                   ),
                                   actions: [
-                                    CupertinoDialogAction(child: const Text('Cancel', style: TextStyle(fontFamily: 'SFPro')), onPressed: () => Navigator.pop(context)),
+                                    CupertinoDialogAction(child: const Text('Cancel', style: TextStyle(fontFamily: 'SFPro', color: CupertinoColors.activeBlue)), onPressed: () => Navigator.pop(context)),
                                     CupertinoDialogAction(
                                       isDefaultAction: true,
-                                      child: const Text('Save', style: TextStyle(fontFamily: 'SFPro', fontWeight: FontWeight.w600)),
+                                      child: const Text('Save', style: TextStyle(fontFamily: 'SFPro', fontWeight: FontWeight.w600, color: CupertinoColors.activeBlue)),
                                       onPressed: () {
                                         provider.updateRecordingTitle(currentRecord.id, titleController.text);
                                         Navigator.pop(context);
@@ -281,10 +424,10 @@ Powered by ErgoVoice.
                                                 ),
                                               ),
                                               actions: [
-                                                CupertinoDialogAction(child: const Text('Cancel', style: TextStyle(fontFamily: 'SFPro')), onPressed: () => Navigator.pop(context)),
+                                                CupertinoDialogAction(child: const Text('Cancel', style: TextStyle(fontFamily: 'SFPro', color: CupertinoColors.activeBlue)), onPressed: () => Navigator.pop(context)),
                                                 CupertinoDialogAction(
                                                   isDefaultAction: true,
-                                                  child: const Text('Save', style: TextStyle(fontFamily: 'SFPro', fontWeight: FontWeight.w600)),
+                                                  child: const Text('Save', style: TextStyle(fontFamily: 'SFPro', fontWeight: FontWeight.w600, color: CupertinoColors.activeBlue)),
                                                   onPressed: () {
                                                     provider.updateParticipantName(currentRecord.id, index, editController.text);
                                                     Navigator.pop(context);
@@ -337,7 +480,7 @@ Powered by ErgoVoice.
                         // REVISI: Tambahkan context di sini agar To-Do bisa diklik
                         _buildSummaryTab(context, currentRecord), 
                         _buildTranscriptTab(currentRecord), 
-                        _buildAskErgoTab()
+                        _buildAskErgoTab(currentRecord)
                       ],
                     ),
                   ),
@@ -346,7 +489,7 @@ Powered by ErgoVoice.
 
               // Mini Player Bawah (Liquid Glass ala request UX)
               // REVISI LOGIKA: Sembunyikan mini player jika Action Sheet sedang terbuka (Aesthetic polish ala hig-materials.md materials thickness)
-              if (!_isShowingActionSheet)
+              if (!_isShowingActionSheet && MediaQuery.of(context).viewInsets.bottom == 0)
                 Positioned(
                   bottom: 32, left: 16, right: 16,
                   child: ClipRRect(
@@ -356,21 +499,77 @@ Powered by ErgoVoice.
                       child: Container(
                         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                         decoration: BoxDecoration(color: Colors.black.withValues(alpha: 0.85), borderRadius: BorderRadius.circular(30), border: Border.all(color: Colors.white.withValues(alpha: 0.2), width: 0.5)),
+                        // UI MINI PLAYER YANG SUDAH HIDUP
                         child: Row(
                           children: [
-                            const Icon(CupertinoIcons.play_circle_fill, color: Colors.white, size: 36), const SizedBox(width: 12),
+                            // 1. TOMBOL PLAY/PAUSE INTERAKTIF
+                            GestureDetector(
+                              onTap: () {
+                                if (_isPlaying) {
+                                  _audioPlayer.pause();
+                                } else {
+                                  _audioPlayer.resume();
+                                }
+                              },
+                              child: Icon(
+                                _isPlaying ? CupertinoIcons.pause_circle_fill : CupertinoIcons.play_circle_fill, 
+                                color: Colors.white, 
+                                size: 36
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            
+                            // 2. PROGRESS BAR & WAKTU (SCRUBBING)
                             Expanded(
                               child: Column(
                                 mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  Container(height: 4, width: double.infinity, decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.2), borderRadius: BorderRadius.circular(2)), child: FractionallySizedBox(alignment: Alignment.centerLeft, widthFactor: 0.3, child: Container(decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(2))))),
-                                  const SizedBox(height: 6),
-                                  Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [Text('00:00', style: TextStyle(fontFamily: 'SFPro', fontSize: 11, color: Colors.white.withValues(alpha: 0.7))), Text(widget.recording.duration ?? '-00:00', style: TextStyle(fontFamily: 'SFPro', fontSize: 11, color: Colors.white.withValues(alpha: 0.7)))],),
+                                  SizedBox(
+                                    height: 16, 
+                                    child: SliderTheme(
+                                      data: SliderThemeData(
+                                        trackHeight: 4,
+                                        thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 6),
+                                        overlayShape: SliderComponentShape.noOverlay,
+                                        activeTrackColor: Colors.white,
+                                        inactiveTrackColor: Colors.white.withValues(alpha: 0.2),
+                                        thumbColor: Colors.white,
+                                      ),
+                                      child: Slider(
+                                        value: (_duration.inMilliseconds > 0 && _position.inMilliseconds <= _duration.inMilliseconds)
+                                            ? _position.inMilliseconds.toDouble()
+                                            : 0.0,
+                                        min: 0.0,
+                                        max: _duration.inMilliseconds > 0 ? _duration.inMilliseconds.toDouble() : 1.0,
+                                        onChanged: (value) {
+                                          final newPosition = Duration(milliseconds: value.toInt());
+                                          _audioPlayer.seek(newPosition);
+                                        },
+                                      ),
+                                    ),
+                                  ),
+                                  const SizedBox(height: 2),
+                                  Row(
+                                    mainAxisAlignment: MainAxisAlignment.spaceBetween, 
+                                    children: [
+                                      Text(_formatDuration(_position), style: TextStyle(fontFamily: 'SFPro', fontSize: 11, color: Colors.white.withValues(alpha: 0.7))), 
+                                      Text("-${_formatDuration(_duration - _position)}", style: TextStyle(fontFamily: 'SFPro', fontSize: 11, color: Colors.white.withValues(alpha: 0.7)))
+                                    ],
+                                  ),
                                 ],
                               ),
                             ),
-                            const SizedBox(width: 16),
-                            Container(padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4), decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.15), borderRadius: BorderRadius.circular(12)), child: const Text('1x', style: TextStyle(fontFamily: 'SFPro', fontWeight: FontWeight.w700, color: Colors.white, fontSize: 13))),
+                            const SizedBox(width: 12),
+                            
+                            // 3. TOMBOL KECEPATAN (TUNGGAL & INTERAKTIF)
+                            GestureDetector(
+                              onTap: _togglePlaybackRate,
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4), 
+                                decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.15), borderRadius: BorderRadius.circular(12)), 
+                                child: Text('${_playbackRate.toStringAsFixed(_playbackRate == 1.0 ? 0 : 1)}x', style: const TextStyle(fontFamily: 'SFPro', fontWeight: FontWeight.w700, color: Colors.white, fontSize: 13))
+                              ),
+                            ),
                           ],
                         ),
                       ),
@@ -401,8 +600,8 @@ Powered by ErgoVoice.
           ),
         ),
 
-        // --- KEMBALIKAN BLOK UI ACTION ITEMS (TO-DO LIST) YANG HILANG ---
-        if (currentRecord.actionItems != null && currentRecord.actionItems!.isNotEmpty) ...[
+        // --- TEMBOK BESI UI: HANYA RENDER JIKA TEMPLATE = BUSINESS ---
+        if (currentRecord.templateType == 'Business' && currentRecord.actionItems != null && currentRecord.actionItems!.isNotEmpty) ...[
           const SizedBox(height: 32),
           const Text('Action Items', style: TextStyle(fontFamily: 'SFPro', fontSize: 18, fontWeight: FontWeight.w800, color: Colors.black)),
           const SizedBox(height: 16),
@@ -462,7 +661,129 @@ Powered by ErgoVoice.
     return ListView(padding: const EdgeInsets.only(left: 20, right: 20, top: 8, bottom: 120), children: [MarkdownBody(data: displayTranscript, styleSheet: MarkdownStyleSheet(p: const TextStyle(fontFamily: 'SFPro', fontSize: 16, height: 1.6, fontWeight: FontWeight.w400, color: Color(0xFF1C1C1E)), strong: const TextStyle(fontFamily: 'SFPro', fontWeight: FontWeight.w800, color: Colors.blue), blockSpacing: 16),)],);
   }
 
-  Widget _buildAskErgoTab() {
-    return Stack(children: [ListView(padding: const EdgeInsets.only(left: 20, right: 20, top: 8, bottom: 180), children: const [Center(child: Padding(padding: EdgeInsets.only(top: 40), child: Text('Ask a question about this meeting.\n(e.g., "What was the main conclusion?")', textAlign: TextAlign.center, style: TextStyle(fontFamily: 'SFPro', color: Color(0xFF8E8E93), fontSize: 14))))]), Positioned(bottom: 110, left: 20, right: 20, child: Container(decoration: BoxDecoration(color: const Color(0xFFF2F2F7), borderRadius: BorderRadius.circular(24), border: Border.all(color: const Color(0xFFE5E5EA))), child: const TextField(style: TextStyle(fontFamily: 'SFPro'), decoration: InputDecoration(hintText: 'Ask Ergo...', hintStyle: TextStyle(fontFamily: 'SFPro', color: Color(0xFF8E8E93)), border: InputBorder.none, contentPadding: EdgeInsets.symmetric(horizontal: 20, vertical: 14), suffixIcon: Icon(CupertinoIcons.arrow_up_circle_fill, color: Colors.black, size: 28)))))]);
+ // REVISI Master: UI Chatbot iMessage Natural, Dinamis, & Profesional Bergaya Master HIG
+  Widget _buildAskErgoTab(Recording currentRecord) {
+    String displayTranscript = currentRecord.transcript ?? 'Tidak ada data transkrip.';
+    if (currentRecord.participantNames != null) {
+      for (int i = 0; i < currentRecord.participantNames!.length; i++) {
+        displayTranscript = displayTranscript.replaceAll('[Speaker ${i + 1}]', currentRecord.participantNames![i]);
+        displayTranscript = displayTranscript.replaceAll('Speaker ${i + 1}', currentRecord.participantNames![i]); 
+      }
+    }
+    String contextData = "Judul: ${currentRecord.title}\nRingkasan:\n${currentRecord.summary}\nTranskrip dengan Nama Asli:\n$displayTranscript";
+
+    // REVISI UX 1: Tap-to-Dismiss
+    return GestureDetector(
+      onTap: () => FocusScope.of(context).unfocus(),
+      behavior: HitTestBehavior.translucent, 
+      child: Column(
+        children: [
+          // 1. AREA PESAN CHAT (Natural & Spacing Alami)
+          Expanded(
+            child: _chatMessages.isEmpty
+                ? const SizedBox.shrink() 
+                // REVISI UX 2: Pengganti 'keyboardDismissMode' yang kebal Error
+                : NotificationListener<UserScrollNotification>(
+                    onNotification: (notification) {
+                      // Menutup keyboard seketika saat pengguna mulai menggulir obrolan
+                      FocusScope.of(context).unfocus();
+                      return false; // Biarkan scroll tetap berjalan natural
+                    },
+                    child: ListView.builder(
+                      controller: _chatScrollController,
+                      padding: const EdgeInsets.only(left: 20, right: 20, top: 12, bottom: 20),
+                      itemCount: _chatMessages.length + (_isErgoTyping ? 1 : 0),
+                      itemBuilder: (context, index) {
+                        final isErgoTypingPlaceholder = (index == _chatMessages.length);
+                        final msg = isErgoTypingPlaceholder ? {'role': 'ai', 'text': 'Ergo is typing...'} : _chatMessages[index];
+                        
+                        final isUser = msg['role'] == 'user' || msg['sender'] == 'user'; 
+                        final color = isUser ? CupertinoColors.activeBlue : const Color(0xFFE9E9EB); 
+
+                        return Align(
+                          alignment: isUser ? Alignment.centerRight : Alignment.centerLeft,
+                          child: Container(
+                            margin: const EdgeInsets.only(bottom: 12),
+                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10), 
+                            constraints: BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.72),
+                            
+                            // Implementasi Asymmetrical Radius (CONCAVE STYLE)
+                            decoration: BoxDecoration(
+                              color: color,
+                              borderRadius: BorderRadius.only(
+                                topLeft: const Radius.circular(20),
+                                topRight: const Radius.circular(20),
+                                bottomLeft: isUser ? const Radius.circular(20) : Radius.zero,
+                                bottomRight: isUser ? Radius.zero : const Radius.circular(20),
+                              ),
+                            ),
+                            child: Text(
+                              msg['text'] ?? msg['message'] ?? '',
+                              style: TextStyle(fontFamily: 'SFPro', fontSize: 16, height: 1.3, fontWeight: FontWeight.w400, color: isUser ? Colors.white : Colors.black),
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+          ),
+          
+          // 2. KOLOM INPUT CHAT Master Bergaya iOS Sempurna
+          Container(
+            margin: EdgeInsets.only(
+              left: 20, 
+              right: 20, 
+              bottom: 85 + MediaQuery.of(context).padding.bottom, 
+            ), 
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.center, 
+              children: [
+                Container(
+                  height: 38, width: 38,
+                  decoration: const BoxDecoration(
+                    color: CupertinoColors.systemGrey5, shape: BoxShape.circle,
+                  ),
+                  child: const Icon(CupertinoIcons.plus, color: Color(0xFF8E8E93), size: 24), 
+                ),
+                const SizedBox(width: 12),
+                
+                Expanded(
+                  child: Container(
+                    height: 38,
+                    decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(20), border: Border.all(color: const Color(0xFFE5E5EA))),
+                    child: TextField(
+                      controller: _chatController,
+                      style: const TextStyle(fontFamily: 'SFPro', fontSize: 16),
+                      textInputAction: TextInputAction.send,
+                      onSubmitted: (_) => _handleSendMessage(contextData), 
+                      decoration: InputDecoration(
+                        hintText: 'Ask Ergo', 
+                        hintStyle: const TextStyle(fontFamily: 'SFPro', color: Color(0xFF8E8E93)),
+                        border: InputBorder.none, 
+                        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 0), 
+                        
+                        suffixIcon: GestureDetector(
+                          onTap: _isUserTyping ? () => _handleSendMessage(contextData) : null,
+                          child: AnimatedContainer(
+                            duration: const Duration(milliseconds: 150),
+                            padding: const EdgeInsets.only(right: 6.0),
+                            child: Icon(
+                              _isUserTyping ? CupertinoIcons.arrow_up_circle_fill : CupertinoIcons.mic, 
+                              color: _isUserTyping ? CupertinoColors.activeBlue : CupertinoColors.systemGrey, 
+                              size: _isUserTyping ? 30 : 26,
+                            ),
+                          ),
+                        )
+                      )
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
   }
 }
+

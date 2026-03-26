@@ -1,7 +1,6 @@
-import 'package:flutter/foundation.dart'; // Tambahkan ini
-import 'package:flutter/material.dart';
-import 'package:flutter/services.dart' show rootBundle; 
-import 'dart:typed_data'; 
+import 'dart:io';
+import 'package:flutter/foundation.dart'; 
+import 'package:path_provider/path_provider.dart'; // WAJIB TAMBAHKAN INI
 import '../models/recording.dart';
 import '../services/isar_service.dart';
 import '../services/gemini_service.dart';
@@ -12,6 +11,7 @@ class RecordingProvider extends ChangeNotifier {
   List<Recording> _recordings = [];
   List<Recording> get recordings => _recordings;
   bool isSyncing = false; 
+  
 
   RecordingProvider() { fetchRecordings(); }
 
@@ -20,15 +20,24 @@ class RecordingProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> syncWithPendant(String templateType) async {
+  Future<void> syncWithPendant(String templateType, {required String audioPath}) async {
     isSyncing = true;
     notifyListeners(); 
 
     try {
-      final ByteData audioData = await rootBundle.load('assets/audio/testing_rapat.mp3');
-      final Uint8List audioBytes = audioData.buffer.asUint8List();
+      // 1. Membaca file audio asli dari memori HP
+      final File tempAudioFile = File(audioPath);
+      final Uint8List audioBytes = await tempAudioFile.readAsBytes();
+
+      // REVISI 1: Pindahkan file ke penyimpanan permanen aplikasi agar bisa diputar di Workspace
+      final appDir = await getApplicationDocumentsDirectory();
+      final fileName = "ergo_${DateTime.now().millisecondsSinceEpoch}.m4a";
+      final permanentAudioFile = await tempAudioFile.copy('${appDir.path}/$fileName');
+
+      // 2. Mengirim audio ke Gemini AI 
       final aiResult = await _geminiService.generateSummaryFromAudio(audioBytes, templateType);
 
+      // 3. Ekstrak To-Do List
       List<ActionItem> extractedTodos = [];
       if (aiResult['todos'] is List) {
         for (var todoText in aiResult['todos']) {
@@ -36,7 +45,7 @@ class RecordingProvider extends ChangeNotifier {
         }
       }
 
-      // Menerjemahkan JSON Participants ke Isar
+      // 4. Ekstrak Daftar Partisipan
       List<String> extractedParticipants = [];
       if (aiResult['participants'] is List) {
         for (var participant in aiResult['participants']) {
@@ -44,25 +53,42 @@ class RecordingProvider extends ChangeNotifier {
         }
       }
 
+      // 5. Kalkulasi Durasi Asli
+      int estimatedSeconds = (audioBytes.length / 16000).round();
+      if (estimatedSeconds < 1) estimatedSeconds = 1;
+      final m = (estimatedSeconds / 60).floor().toString().padLeft(2, '0');
+      final s = (estimatedSeconds % 60).toString().padLeft(2, '0');
+      final realDuration = "$m:$s";
+
+      // 6. Merakit Objek Database (Isar)
       final newRecord = Recording()
-        ..title = aiResult['summary_title'] // REVISI 1: Menimpa Judul Teknis dengan Judul Dinamis Gemini!
-        ..date = DateTime.now() // Otomatis
-        ..duration = "00:03:15" 
+        ..title = aiResult['summary_title'] ?? "Voice Note Baru"
+        ..date = DateTime.now() 
+        ..duration = realDuration
+        ..filePath = permanentAudioFile.path // REVISI 2: Menyimpan jalur audio asli ke Database!
         ..templateType = templateType
-        ..summary = aiResult['summary'] // Summary bersih
-        ..transcript = aiResult['transcript']
+        ..summary = aiResult['summary'] ?? "Tidak ada ringkasan."
+        ..transcript = aiResult['transcript'] ?? "Tidak ada transkrip."
         ..actionItems = extractedTodos 
-        ..participantNames = extractedParticipants // REVISI 2: Menyimpan data partisipan terpisah
+        ..participantNames = extractedParticipants 
         ..isSynced = true;
+        
 
       await _isarService.saveRecording(newRecord);
       await fetchRecordings(); 
+      
+      // 7. Bersihkan file temporary (File permanen tetap aman)
+      if (await tempAudioFile.exists()) {
+        await tempAudioFile.delete();
+      }
+      
     } catch (e) { debugPrint("Error Sync: $e"); }
 
     isSyncing = false;
     notifyListeners();
   }
 
+  // ... (fungsi toggleTodo, updateParticipantName, updateRecordingTitle, deleteRecording dibiarkan persis sama seperti sebelumnya)
   Future<void> toggleTodo(int recordingId, int todoIndex, bool isDone) async {
     final recordIndex = _recordings.indexWhere((r) => r.id == recordingId);
     if (recordIndex != -1) {
@@ -77,26 +103,19 @@ class RecordingProvider extends ChangeNotifier {
     }
   }
 
-  // FUNGSI BARU: Apple UX - Mengubah nama Speaker langsung di tempat
   Future<void> updateParticipantName(int recordingId, int participantIndex, String newName) async {
-    if (newName.trim().isEmpty) return; // JANGAN perbolehkan nama kosong
-
+    if (newName.trim().isEmpty) return;
     final recordIndex = _recordings.indexWhere((r) => r.id == recordingId);
     if (recordIndex != -1) {
       final record = _recordings[recordIndex];
       if (record.participantNames != null && participantIndex < record.participantNames!.length) {
-        // Melakukan update nama dalam list
         record.participantNames![participantIndex] = newName.trim();
-        
-        // Simpan ke database lokal
         await _isarService.saveRecording(record);
-        
-        // Beri tahu UI untuk merefresh tampilannya
         notifyListeners();
       }
     }
   }
-  // FUNGSI BARU: Inline Editing untuk Judul Rapat
+
   Future<void> updateRecordingTitle(int recordingId, String newTitle) async {
     if (newTitle.trim().isEmpty) return;
     final recordIndex = _recordings.indexWhere((r) => r.id == recordingId);
@@ -107,10 +126,10 @@ class RecordingProvider extends ChangeNotifier {
       notifyListeners();
     }
   }
-  // FUNGSI BARU: Menghapus rekaman (Sesuai Apple iOS paradigm)
+
   Future<void> deleteRecording(int recordingId) async {
-    await _isarService.deleteRecording(recordingId); // Hapus dari database
-    _recordings.removeWhere((r) => r.id == recordingId); // Hapus dari list di memori
-    notifyListeners(); // Refresh UI seketika
+    await _isarService.deleteRecording(recordingId); 
+    _recordings.removeWhere((r) => r.id == recordingId); 
+    notifyListeners(); 
   }
 }

@@ -66,5 +66,7 @@
 		<string>UIInterfaceOrientationLandscapeLeft</string>
 		<string>UIInterfaceOrientationLandscapeRight</string>
 	</array>
+	<key>NSMicrophoneUsageDescription</key>
+		<string>ErgoVoice membutuhkan akses mikrofon untuk mensimulasikan sinkronisasi perangkat hardware dan merangkum rapat Anda.</string>
 </dict>
 </plist>
